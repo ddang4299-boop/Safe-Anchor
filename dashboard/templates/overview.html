@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mascot-say" style="margin-bottom:16px">
+  <img src="/static/mascots/sao_happy.svg" alt="Sao Nhỏ">
+  <div class="speech"><strong>Chào {{ web.actor_label }}!</strong> Đây là tình hình của các con. Trang tự cập nhật mỗi 10 giây.</div>
+</div>
+
+<div id="cmd-result" aria-live="polite"></div>
+
+<section class="card stack" style="margin-bottom:16px">
+  <h2>🙋 Yêu cầu của các con</h2>
+  <div id="requests" hx-get="/partials/requests" hx-trigger="every 5s" hx-swap="innerHTML">
+    {% include "_requests.html" %}
+  </div>
+</section>
+
+<section aria-label="Các con">
+  <div id="kids" class="grid two" hx-get="/partials/overview" hx-trigger="every 10s" hx-swap="innerHTML">
+    {% include "_overview_cards.html" %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Khóa phát triển + DB sinh tự động: KHÔNG commit
+server/instance/
+.ogk_agent/
+certs/*.key
+*.db
+*.db-wal
+*.db-shm
+dashboard/static/mascots/_preview.html
+
+# Tài liệu tham khảo của bên thứ ba: đề của giảng viên + ảnh nhân vật có bản quyền.
+# Repo công khai nên KHÔNG đưa lên; giữ ở máy để nhóm tự đọc.
+/Yêu cầu/
+/Ảnh về các vật trang trí cho trẻ/

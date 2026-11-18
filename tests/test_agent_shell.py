@@ -1,0 +1,145 @@
+"""Unit test lớp vỏ agent: IPC danh sách trắng, mẫu câu cá nhân hóa, logic hiển thị Tray, netguard,
+watchdog Tray (không chế độ ẩn), backoff có jitter, bộ đo tỉ lệ chặn trên bộ 50 + 20 tên miền."""
+import csv
+import json
+import random
+from pathlib import Path
+
+from agent.domain_rules import CategoryMap, DnsPolicyEngine, DomainSet
+from agent.ipc import ALLOWED_OPS, IpcDispatcher
+from agent.netguard import build_firewall_commands, complement_ranges
+from agent.tray import messages_vi as M
+from agent.tray import view_logic as V
+from agent.winsys import TrayWatchdog
+from agent.ws_client import backoff_delay
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+class FakeCore:
+    def __init__(self):
+        self.idle = None
+        self.acked = False
+
+    def report_idle(self, s):
+        self.idle = s
+
+    def ack_break(self):
+        self.acked = True
+        return True
+
+
+class FakeRuntime:
+    def __init__(self):
+        self.core = FakeCore()
+        self.requests = []
+
+    def ipc_status(self, since):
+        return {"phase": "active", "since": since}
+
+    def ipc_request_more_time(self, minutes, reason):
+        self.requests.append((minutes, reason))
+        return {"sent": True}
+
+
+# ------------------------------------------------------------------ IPC
+def test_ipc_rejects_ops_outside_whitelist():
+    d = IpcDispatcher(FakeRuntime())
+    for op in ("disable_filter", "set_policy", "stop_service", "add_time", "unlock", "__class__"):
+        assert d.handle({"op": op}) == {"ok": False, "error": "not_allowed"}
+    assert "add_time" not in ALLOWED_OPS and "set_policy" not in ALLOWED_OPS
+
+
+def test_ipc_validates_arguments():
+    rt = FakeRuntime()
+    d = IpcDispatcher(rt)
+    assert d.handle({"op": "request_more_time", "args": {"minutes": 999}})["error"] == "bad_args"
+    assert d.handle({"op": "request_more_time", "args": {"minutes": 15, "reason": "x" * 201}})["error"] == "bad_args"
+    assert d.handle({"op": "request_more_time", "args": {"minutes": 30, "reason": "làm bài"}})["ok"]
+    assert rt.requests == [(30, "làm bài")]
+    assert d.handle({"op": "report_idle", "args": {"seconds": -5}})["error"] == "bad_args"
+    assert d.handle({"op": "report_idle", "args": {"seconds": 400}})["ok"] and rt.core.idle == 400
+    assert json.loads(d.handle_raw(b"\xff\xfe garbage"))["error"] == "bad_json"
+
+
+# ------------------------------------------------------------------ mẫu câu
+PROFILE = {"nickname": "Bin", "self_pronoun": "con", "guardian_call": "Mẹ", "age_mode": "choi"}
+
+
+def test_message_templates_insert_names_and_capitalize():
+    rnd = random.Random(1)
+    t = M.render("request_approved", PROFILE, phut=15, loi_nhan="Nhớ nghỉ mắt nha", rnd=rnd)
+    assert "Mẹ" in t and "Bin" in t and "Nhớ nghỉ mắt nha" in t
+    t2 = M.render("warn_5", {**PROFILE, "nickname": "na"}, rnd=random.Random(0))
+    assert t2[0].isupper()  # tên đứng đầu câu vẫn viết hoa
+
+
+def test_no_forbidden_words_in_any_template():
+    for situation, variants in M.MESSAGES.items():
+        for _, text in variants:
+            low = text.lower()
+            assert not any(w in low for w in M.FORBIDDEN_WORDS), (situation, text)
+
+
+def test_every_situation_has_variant_for_both_age_modes():
+    for situation in M.MESSAGES:
+        for mode in ("mam", "choi"):
+            assert M.render(situation, {**PROFILE, "age_mode": mode})
+
+
+# ------------------------------------------------------------------ logic hiển thị
+def test_time_bar_color_thresholds():
+    assert V.time_color(30 * 60) == V.MINT
+    assert V.time_color(10 * 60) == V.SUN
+    assert V.time_color(60) == V.CORAL
+    assert V.time_icon(60) != V.time_icon(30 * 60)  # không chỉ dùng màu
+
+
+def test_block_screen_answers_three_questions():
+    st = {"phase": "locked", "lock_reason": "schedule", "next_allowed": "16:00", "profile": PROFILE}
+    s = V.block_screen(st)
+    assert s.what and s.why and s.next_steps and "16:00" in s.why
+    g = V.block_screen({"phase": "grace", "lock_reason": "quota", "grace_left": 42, "profile": PROFILE})
+    assert g.countdown == 42 and g.can_ack_break
+    assert V.block_screen({"phase": "active", "profile": PROFILE}) is None
+
+
+# ------------------------------------------------------------------ netguard & watchdog & backoff
+def test_complement_ranges_excludes_upstreams():
+    r = complement_ranges(["8.8.8.8", "1.1.1.1"])
+    assert r == ["0.0.0.1-1.1.1.0", "1.1.1.2-8.8.8.7", "8.8.8.9-255.255.255.254"]
+    cmds = [" ".join(c) for c in build_firewall_commands(["8.8.8.8"])]
+    assert any("remoteport=853" in c for c in cmds)
+    assert any("remoteport=53" in c and "8.8.8.9-" in c for c in cmds)
+
+
+def test_tray_watchdog_relaunches_then_suspends():
+    w = TrayWatchdog()
+    w.contact(0)
+    assert w.decide(10, True) == "ok"
+    assert w.decide(100, True) == "launch"  # trẻ kill Tray => mở lại, KHÔNG dừng kiểm soát
+    for i in range(TrayWatchdog.MAX_FAILS):
+        w.launch_result(False, 100 + i)
+    assert w.decide(200, True) == "suspend"  # không thể hiện biểu tượng => tự dừng (không chế độ ẩn)
+    assert w.decide(200, False) == "ok"
+
+
+def test_backoff_with_jitter_bounds():
+    rnd = random.Random(7)
+    delays = [backoff_delay(a, rnd) for a in range(10)]
+    assert 0.5 <= delays[0] <= 1.0
+    assert all(d <= 30 for d in delays) and delays[-1] >= 15
+
+
+# ------------------------------------------------------------------ tỉ lệ chặn trên bộ dữ liệu đề
+def test_block_rate_on_test_domains():
+    cats = {r["domain"]: r["category"] for r in csv.DictReader(open(ROOT / "data/categories.csv", encoding="utf-8"))}
+    engine = DnsPolicyEngine(categories=CategoryMap(cats), blocked_categories=frozenset({"social", "inappropriate"}))
+    rows = list(csv.DictReader(open(ROOT / "data/test_domains.csv", encoding="utf-8")))
+    should_block = [r["domain"] for r in rows if r["expected"] == "block"]
+    edu = [r["domain"] for r in rows if r["group"] == "education"]
+    blocked = sum(engine.decide(d).action == "block" for d in should_block)
+    false_pos = [d for d in edu if engine.decide(d).action == "block"]
+    assert len(should_block) == 50 and len(edu) == 20
+    assert blocked / len(should_block) >= 0.95
+    assert false_pos == []

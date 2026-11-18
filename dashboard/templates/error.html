@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Ối · OGK</title>
+  <link rel="stylesheet" href="/static/css/ogk.css">
+</head>
+<body>
+<div class="auth">
+  <div class="card empty">
+    <img src="/static/mascots/khien_remind.svg" alt="Khiên Xanh">
+    <h1>{{ 'Không tìm thấy trang' if status == 404 else 'Có chút trục trặc' }}</h1>
+    <p class="muted">{{ detail }}</p>
+    <a class="btn" href="/">Về trang chính</a>
+  </div>
+</div>
+</body>
+</html>

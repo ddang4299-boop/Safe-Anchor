@@ -1,0 +1,25 @@
+{% for r in requests %}
+<form class="card soft req" hx-target="#requests" hx-swap="innerHTML">
+  <div class="row" style="justify-content:space-between">
+    <strong>{{ r.child }} xin thêm {{ r.minutes }} phút</strong>
+    <span class="small muted">{{ r.created_at|when }}</span>
+  </div>
+  {% if r.reason %}<div>💬 “{{ r.reason }}”</div>{% endif %}
+  <label for="note-{{ r.id }}" class="small">Lời nhắn cho con (không bắt buộc)</label>
+  {# hx-preserve: ô đang gõ không bị xóa khi danh sách tự làm mới mỗi 5 giây #}
+  <textarea id="note-{{ r.id }}" name="note" maxlength="200" rows="2" hx-preserve="true"></textarea>
+  <div class="chips">
+    {% for n in notes %}<button type="button" class="chip" data-fill="note-{{ r.id }}">{{ n }}</button>{% endfor %}
+  </div>
+  <div class="row">
+    <label class="sr-only" for="min-{{ r.id }}">Số phút</label>
+    <select id="min-{{ r.id }}" name="minutes" style="width:auto" hx-preserve="true">
+      {% for m in (15, 30, 60) %}<option value="{{ m }}" {% if m == r.minutes %}selected{% endif %}>{{ m }} phút</option>{% endfor %}
+    </select>
+    <button class="btn mint" hx-post="/requests/{{ r.id }}/approve">✓ Đồng ý</button>
+    <button class="btn ghost" hx-post="/requests/{{ r.id }}/deny">Để lần sau</button>
+  </div>
+</form>
+{% else %}
+<div class="empty small"><img src="/static/mascots/sao_sleepy.svg" alt="">Hiện chưa có yêu cầu nào.</div>
+{% endfor %}

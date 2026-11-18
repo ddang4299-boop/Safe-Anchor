@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ child.nickname }} · OGK{% endblock %}
+{% block head %}<script src="/static/js/schedule.js" defer></script>{% endblock %}
+{% block content %}
+<div class="kid-head">
+  <img src="/static/mascots/{{ child.avatar }}_happy.svg" alt="">
+  <div>
+    <h1 style="margin:0">{{ child.nickname }}</h1>
+    <div class="small muted">{{ child.age }} tuổi · chính sách phiên bản {{ policy_version }}</div>
+  </div>
+</div>
+{% if msg %}<div class="toast ok">{{ msg }}</div>{% endif %}
+<nav class="tabs" aria-label="Mục">
+  {% for key, label in [('report','📊 Báo cáo'), ('time','⏰ Thời gian & lịch'), ('filter','🛡️ Web & ứng dụng'), ('devices','💻 Thiết bị'), ('audit','📜 Nhật ký')] %}
+  <a href="/children/{{ child.id }}?tab={{ key }}" {% if tab == key %}aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>
+{% if tab == 'report' %}{% include "_tab_report.html" %}
+{% elif tab == 'time' %}{% include "_tab_time.html" %}
+{% elif tab == 'filter' %}{% include "_tab_filter.html" %}
+{% elif tab == 'devices' %}{% include "_tab_devices.html" %}
+{% elif tab == 'audit' %}{% include "_tab_audit.html" %}
+{% endif %}
+{% endblock %}

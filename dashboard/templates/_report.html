@@ -1,0 +1,80 @@
+{# Partial DÙNG CHUNG: dashboard phụ huynh (audience="parent") và trang của trẻ (audience="kid").
+   Cùng nguồn dữ liệu reports.child_report() => trẻ thấy đúng những gì ba mẹ thấy, chỉ khác câu chữ. #}
+{% set kid = audience == 'kid' %}
+<div class="grid two">
+  <section class="card stack">
+    <h2>{% if kid %}🕒 Mấy ngày qua {{ name }} đã dùng máy bao lâu{% else %}🕒 Thời lượng 7 ngày{% endif %}</h2>
+    <div class="bars" role="img" aria-label="Biểu đồ thời lượng 7 ngày">
+      {% for d in report.daily %}
+      <div class="bar {% if loop.last %}today{% endif %}">
+        <span class="n">{{ d.minutes }}′</span>
+        <span class="v" style="height:{{ (100 * d.minutes / report.max_day)|round|int }}%"></span>
+        <span class="l">{{ 'Nay' if loop.last else d.label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="small muted">{% if kid %}Hôm nay {{ name }} đã dùng {{ report.today_minutes|mins }}.{% else %}Hôm nay: {{ report.today_minutes|mins }}. Cột xanh lá là hôm nay.{% endif %}</p>
+  </section>
+
+  <section class="card stack">
+    <h2>📅 {% if kid %}Theo từng tuần{% else %}Thời lượng 4 tuần{% endif %}</h2>
+    <div class="bars" role="img" aria-label="Biểu đồ thời lượng theo tuần">
+      {% for w in report.weekly %}
+      <div class="bar {% if loop.last %}today{% endif %}">
+        <span class="n">{{ (w.minutes / 60)|round(1) }}h</span>
+        <span class="v" style="height:{{ (100 * w.minutes / report.max_week)|round|int }}%"></span>
+        <span class="l">{{ w.start }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card stack">
+    <h2>🧩 {% if kid %}{{ name }} đã khám phá những gì (7 ngày){% else %}Phân bổ theo nhóm (7 ngày){% endif %}</h2>
+    {% set total = report.cats_week.values()|sum or 1 %}
+    {% for c, m in report.cats_week.items() %}
+    <div class="hbar"><span class="t">{{ c|cat_vi }}</span>
+      <span class="track"><span class="cat-{{ c }}" style="width:{{ (100 * m / total)|round|int }}%"></span></span>
+      <span class="num">{{ m|mins }}</span></div>
+    {% else %}<p class="muted">Chưa có dữ liệu.</p>{% endfor %}
+  </section>
+
+  <section class="card stack">
+    <h2>📱 {% if kid %}Ứng dụng {{ name }} dùng nhiều nhất{% else %}Top 10 ứng dụng (7 ngày){% endif %}</h2>
+    <table class="data"><thead><tr><th>Ứng dụng</th><th class="num">Thời gian</th>{% if not kid %}<th class="num">Lần mở</th>{% endif %}</tr></thead>
+      <tbody>{% for a in report.top_apps %}<tr><td>{{ a.name }}</td><td class="num">{{ a.minutes|mins }}</td>{% if not kid %}<td class="num">{{ a.count }}</td>{% endif %}</tr>
+      {% else %}<tr><td colspan="3" class="muted">Chưa có dữ liệu.</td></tr>{% endfor %}</tbody></table>
+  </section>
+
+  <section class="card stack">
+    <h2>🌐 {% if kid %}Trang web {{ name }} hay ghé{% else %}Top 10 tên miền (7 ngày){% endif %}</h2>
+    <table class="data"><thead><tr><th>Tên miền</th><th class="num">Số lần truy vấn</th></tr></thead>
+      <tbody>{% for d in report.top_domains %}<tr><td>{{ d.name }}</td><td class="num">{{ d.count }}</td></tr>
+      {% else %}<tr><td colspan="2" class="muted">Chưa có dữ liệu.</td></tr>{% endfor %}</tbody></table>
+    <p class="small muted">Chỉ lưu tên miền cấp hai (vd <code>khanacademy.org</code>), không lưu địa chỉ trang hay nội dung.</p>
+  </section>
+
+  <section class="card stack">
+    {% if kid %}
+    <h2>🛡️ Những trang chưa mở cho {{ name }}</h2>
+    <p>{% for b in report.blocked %}<span class="pill locked" style="margin:2px">{{ b.name }}</span>{% else %}Không có trang nào.{% endfor %}</p>
+    <p class="small muted">Khiên Xanh giữ những trang này lại vì chúng chưa hợp lứa tuổi. Muốn mở trang nào, {{ name }} hỏi ba mẹ nhé!</p>
+    {% else %}
+    <h2>🛡️ Số lần bị chặn (7 ngày): {{ report.blocked_total }}</h2>
+    <table class="data"><thead><tr><th>Đối tượng</th><th>Loại</th><th class="num">Số lần</th></tr></thead>
+      <tbody>{% for b in report.blocked %}<tr><td>{{ b.name }}</td><td>{{ 'Trang web' if b.type == 'blocked_domain' else 'Ứng dụng' }}</td><td class="num">{{ b.count }}</td></tr>
+      {% else %}<tr><td colspan="3" class="muted">Không có.</td></tr>{% endfor %}</tbody></table>
+    {% endif %}
+  </section>
+
+  <section class="card stack">
+    <h2>🙋 {% if kid %}Các lần {{ name }} xin thêm giờ{% else %}Yêu cầu của con{% endif %}</h2>
+    {% for r in report.requests %}
+    <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0">
+      <span>{{ r.minutes }} phút{% if r.reason and not kid %} — “{{ r.reason }}”{% endif %}</span>
+      <span class="pill {{ 'active' if r.status == 'approved' else ('grace' if r.status == 'pending' else 'offline') }}">
+        {{ {'approved': '✓ Đồng ý', 'pending': '… Đang chờ', 'denied': 'Để lần sau'}[r.status] }}</span>
+    </div>
+    {% else %}<p class="muted">Chưa có yêu cầu nào.</p>{% endfor %}
+  </section>
+</div>

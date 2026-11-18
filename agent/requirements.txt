@@ -1,0 +1,7 @@
+psutil>=6
+httpx>=0.27
+websockets>=13
+cryptography>=43
+pywin32>=306 ; sys_platform == "win32"
+# Tray UI cho trẻ (OGK Kids). Chỉ cần gói Essentials (QtWidgets + QtSvg).
+PySide6-Essentials>=6.8

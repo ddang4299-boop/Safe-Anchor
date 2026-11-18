@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex">
+  <title>Hôm nay {{ profile.nickname }} đã dùng gì</title>
+  <link rel="icon" href="/static/mascots/tictac_happy.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/ogk.css">
+</head>
+<body style="background:var(--bg-soft)">
+<div class="kid-page stack">
+  <div class="mascot-say">
+    <img src="/static/mascots/tictac_happy.svg" alt="Tíc-Tắc">
+    <div class="speech">
+      <strong>Chào {{ profile.nickname }}! 👋</strong><br>
+      Đây là những gì {{ profile.self_pronoun }} đã dùng mấy ngày qua.
+      <strong>{{ profile.guardian_call }} cũng thấy đúng những thông tin này, không hơn.</strong>
+    </div>
+  </div>
+  {% set name = profile.nickname %}
+  {% include "_report.html" %}
+  <section class="card stack">
+    <div class="mascot-say">
+      <img src="/static/mascots/khien_happy.svg" alt="Khiên Xanh">
+      <div><h2>📜 Ai đã đổi gì</h2><p class="small muted">Mỗi khi ba mẹ đổi cài đặt, tớ ghi lại ở đây để {{ name }} biết.</p></div>
+    </div>
+    {% for a in audit %}
+    <div style="border-bottom:1px solid var(--line);padding:8px 0">{% for l in a.lines %}<div>{{ l }}</div>{% endfor %}<div class="small muted">{{ a.when }}</div></div>
+    {% else %}<p class="muted">Chưa có thay đổi nào.</p>{% endfor %}
+  </section>
+  <section class="card soft stack">
+    <h2>🔎 OGK biết gì về {{ name }}?</h2>
+    <p>Tớ chỉ biết <strong>tên ứng dụng</strong> và <strong>tên trang web</strong> {{ name }} dùng, cùng thời gian dùng máy.
+      Tớ <strong>không</strong> đọc tin nhắn, <strong>không</strong> chụp màn hình, <strong>không</strong> nghe micro, <strong>không</strong> bật camera.
+      Dữ liệu tự xóa sau 90 ngày.</p>
+  </section>
+</div>
+</body>
+</html>

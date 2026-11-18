@@ -1,0 +1,5 @@
+# Toàn bộ phụ thuộc để chạy server + agent + test trên máy phát triển
+-r server/requirements.txt
+-r agent/requirements.txt
+pytest>=8
+pytest-asyncio>=0.24

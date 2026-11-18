@@ -1,0 +1,6 @@
+<div class="stack" style="margin-top:12px">
+  <div class="pair-code" aria-label="Mã ghép">{{ code }}</div>
+  <div class="countdown" data-countdown="{{ ttl }}">Còn 10:00</div>
+  <div class="small">Trên máy của {{ child }}, chạy (quyền Administrator):</div>
+  <pre class="small" style="white-space:pre-wrap;background:var(--bg-soft);padding:10px;border-radius:12px">python -m agent.run_agent enroll --code {{ code }}</pre>
+</div>

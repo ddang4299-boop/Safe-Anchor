@@ -1,0 +1,32 @@
+<form class="grid two" hx-post="/children/{{ child.id }}/policy/filter" hx-target="#filter-result">
+  <section class="card stack">
+    <h2>🛡️ Nhóm trang web tạm chưa mở</h2>
+    {% for c in categories %}
+    <label class="check"><input type="checkbox" name="blocked_categories" value="{{ c }}" {% if c in policy.dns.blocked_categories %}checked{% endif %}> {{ c|cat_vi }}</label>
+    {% endfor %}
+    <hr style="border:0;border-top:1px solid var(--line)">
+    <label class="check"><input type="checkbox" name="safesearch" {% if policy.dns.safesearch %}checked{% endif %}> Bắt buộc Tìm kiếm an toàn (Google, YouTube, Bing, DuckDuckGo)</label>
+    <label class="check"><input type="checkbox" name="block_doh" {% if policy.dns.block_doh %}checked{% endif %}> Chặn đường vòng DNS-over-HTTPS</label>
+  </section>
+  <section class="card stack">
+    <h2>🌐 Trang web riêng</h2>
+    <div class="field"><label for="dns_block">Tạm chưa mở (mỗi dòng một tên miền; tự áp cho mọi tên miền con)</label>
+      <textarea id="dns_block" name="dns_block" placeholder="vd: example.com">{{ policy.dns.block|join('\n') }}</textarea></div>
+    <div class="field"><label for="dns_allow">Luôn được mở (ưu tiên hơn danh sách chặn)</label>
+      <textarea id="dns_allow" name="dns_allow" placeholder="vd: khanacademy.org">{{ policy.dns.allow|join('\n') }}</textarea></div>
+  </section>
+  <section class="card stack">
+    <h2>📱 Ứng dụng</h2>
+    <div class="field"><label for="abn">Tạm chưa mở — theo tên tệp</label>
+      <textarea id="abn" name="app_block_names" placeholder="vd: robloxplayerbeta.exe">{{ policy.app_rules.block_names|join('\n') }}</textarea></div>
+    <div class="field"><label for="abs">Tạm chưa mở — theo mã băm SHA-256 (đổi tên tệp vẫn nhận ra)</label>
+      <textarea id="abs" name="app_block_sha256" placeholder="64 ký tự hex — lấy bằng: python tools/hash_exe.py C:\đường\dẫn\game.exe">{{ policy.app_rules.block_sha256|join('\n') }}</textarea></div>
+    <div class="field"><label for="aan">Luôn được mở</label>
+      <textarea id="aan" name="app_allow_names">{{ policy.app_rules.allow_names|join('\n') }}</textarea></div>
+  </section>
+  <section class="card stack">
+    <button class="btn" type="submit">Lưu cài đặt lọc</button>
+    <div id="filter-result" aria-live="polite"></div>
+    <p class="small muted">Khi một trang/ứng dụng chưa mở, máy của con <strong>luôn giải thích lý do</strong> bằng lời nhẹ nhàng (Khiên Xanh), không chặn im lặng.</p>
+  </section>
+</form>

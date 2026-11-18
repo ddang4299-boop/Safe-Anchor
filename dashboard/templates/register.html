@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Đăng ký · OGK</title>
+  <link rel="stylesheet" href="/static/css/ogk.css">
+</head>
+<body>
+<div class="auth">
+  <div class="hero" aria-hidden="true"><img src="/static/mascots/sao_celebrate.svg" alt=""></div>
+  <div class="card stack">
+    <h1>Tạo tài khoản gia đình</h1>
+    {% if error %}<div class="toast warn" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" action="/auth/register">
+      <div class="field"><label for="email">Email</label>
+        <input id="email" name="email" type="email" required value="{{ email }}"></div>
+      <div class="field"><label for="password">Mật khẩu (ít nhất 10 ký tự)</label>
+        <input id="password" name="password" type="password" required minlength="10" autocomplete="new-password"></div>
+      <div class="field"><label for="call_name">Con gọi bạn là gì?</label>
+        <input id="call_name" name="call_name" type="text" maxlength="20" placeholder="Ví dụ: Mẹ, Ba, Bà Nội"></div>
+      <button class="btn" type="submit" style="width:100%">Tạo tài khoản</button>
+    </form>
+    <p class="small muted">Đã có tài khoản? <a href="/auth/login">Đăng nhập</a></p>
+  </div>
+</div>
+</body>
+</html>

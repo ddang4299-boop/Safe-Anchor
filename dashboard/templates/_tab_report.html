@@ -1,0 +1,5 @@
+{% set name = child.nickname %}
+<div class="row" style="justify-content:flex-end;margin-bottom:12px">
+  <a class="btn ghost small" href="/children/{{ child.id }}/export.csv">⬇ Xuất báo cáo tuần (CSV)</a>
+</div>
+{% include "_report.html" %}

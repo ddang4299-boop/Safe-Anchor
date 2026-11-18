@@ -1,0 +1,57 @@
+<div class="grid two">
+  <section class="card stack">
+    <h2>🔗 Ghép máy tính của {{ child.nickname }}</h2>
+    <p class="small">Tạo mã 8 ký tự (hạn 10 phút, dùng một lần). Việc tạo mã là <strong>xác nhận ba mẹ đồng ý</strong> cài OGK cho con và được ghi vào nhật ký.</p>
+    <button class="btn" hx-post="/children/{{ child.id }}/pairing-code" hx-target="#pairing">Tạo mã ghép</button>
+    <div id="pairing" aria-live="polite"></div>
+  </section>
+
+  <section class="card stack">
+    <h2>💻 Thiết bị</h2>
+    {% for d in devices %}
+    <div class="device">
+      <div class="row" style="justify-content:space-between"><strong>{{ d.hostname }}</strong><span class="pill {{ d.status }}">{{ d.label }}</span></div>
+      <div class="small muted">Chính sách v{{ d.policy_version }} · lần cuối {{ d.last_seen|hhmm }}{% if d.skew|abs > 120 %} · ⏰ giờ máy lệch {{ d.skew }} giây{% endif %}{% if d.stale %} · ⚠ mất kết nối > 7 ngày{% endif %}</div>
+      {% if not d.revoked %}
+      <div class="row" style="margin-top:8px">
+        <button class="btn small ghost" hx-post="/devices/{{ d.id }}/command" hx-vals='{"cmd": "lock_now"}' hx-target="#dev-result-{{ loop.index }}">☾ Tạm nghỉ ngay</button>
+        <button class="btn small ghost" hx-post="/devices/{{ d.id }}/command" hx-vals='{"cmd": "unlock", "minutes": "30"}' hx-target="#dev-result-{{ loop.index }}">☀ Mở khóa</button>
+        <button class="btn small coral" hx-post="/devices/{{ d.id }}/revoke" hx-target="#dev-result-{{ loop.index }}" hx-confirm="Gỡ thiết bị này? Máy sẽ phải ghép lại.">Gỡ thiết bị</button>
+      </div>
+      <div id="dev-result-{{ loop.index }}"></div>
+      {% endif %}
+    </div>
+    {% else %}<p class="muted">Chưa có thiết bị.</p>{% endfor %}
+  </section>
+
+  <form class="card stack" method="post" action="/children/{{ child.id }}/profile">
+    <h2>👤 Hồ sơ của con</h2>
+    <input type="hidden" name="csrf_token" value="{{ web.csrf }}">
+    <div class="field"><label for="nn">Tên gọi ở nhà (≤ 20 ký tự)</label><input id="nn" name="nickname" type="text" maxlength="20" value="{{ child.nickname }}"></div>
+    <div class="field"><label for="sp">Con tự xưng là</label>
+      <select id="sp" name="self_pronoun">{% for p in ('con', 'em', 'mình', 'cháu') %}<option {% if p == child_obj.self_pronoun %}selected{% endif %}>{{ p }}</option>{% endfor %}</select></div>
+    <p class="small muted">Tên gọi được mã hóa AES-256-GCM khi lưu và chỉ dùng để mascot gọi con thân mật.</p>
+    <button class="btn" type="submit">Lưu hồ sơ</button>
+  </form>
+
+  <section class="card stack">
+    <h2>👀 Link cho con xem</h2>
+    <p class="small">Trang chỉ đọc để con xem “Hôm nay {{ child.nickname }} đã dùng gì” và “Ai đã đổi gì” — đúng những gì ba mẹ thấy.</p>
+    <button class="btn ghost" hx-post="/children/{{ child.id }}/kid-link" hx-target="#kidlink">Tạo link</button>
+    <div id="kidlink"></div>
+  </section>
+
+  <section class="card stack danger">
+    <h2>🧹 Vùng cẩn thận</h2>
+    <details>
+      <summary class="btn coral small">Xóa toàn bộ dữ liệu của con tôi…</summary>
+      <form class="stack" style="margin-top:12px" hx-post="/children/{{ child.id }}/purge" hx-target="#purge-result">
+        <p class="small">Xóa mọi sự kiện, thống kê, yêu cầu trên máy chủ <strong>và</strong> gửi lệnh xóa bộ đệm trên máy của con. Không hoàn tác được.</p>
+        <label for="cf">Gõ đúng tên gọi “{{ child.nickname }}” để xác nhận</label>
+        <input id="cf" name="confirm" type="text" autocomplete="off">
+        <button class="btn coral" type="submit">Xóa vĩnh viễn</button>
+        <div id="purge-result"></div>
+      </form>
+    </details>
+  </section>
+</div>

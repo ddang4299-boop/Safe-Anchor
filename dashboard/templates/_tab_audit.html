@@ -1,0 +1,21 @@
+<div class="grid two">
+  <section class="card stack">
+    <h2>📜 Nhật ký thay đổi</h2>
+    <p class="small muted">👀 Con cũng xem được nhật ký này (trên máy và qua link của con).</p>
+    <table class="data"><thead><tr><th>Lúc</th><th>Nội dung</th><th>IP</th></tr></thead><tbody>
+      {% for item in entries %}
+      <tr><td style="white-space:nowrap">{{ item.when }}</td>
+        <td>{% for l in item.lines %}<div>{{ l }}</div>{% endfor %}</td>
+        <td class="small muted">{{ item.e.ip }}</td></tr>
+      {% else %}<tr><td colspan="3" class="muted">Chưa có.</td></tr>{% endfor %}
+    </tbody></table>
+  </section>
+  <section class="card stack">
+    <h2>⏰ Cảnh báo toàn vẹn</h2>
+    <p class="small muted">Ví dụ: đồng hồ máy bị chỉnh tới/lùi. Thời gian sử dụng vẫn được đếm đúng nhờ đồng hồ đơn điệu.</p>
+    {% for a in alerts %}
+    <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0">
+      <span>{{ a.kind }} <span class="small muted">{{ a.detail_json }}</span></span><span class="small">{{ a.ts|when }}</span></div>
+    {% else %}<p class="muted">Không có cảnh báo.</p>{% endfor %}
+  </section>
+</div>

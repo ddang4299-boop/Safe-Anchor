@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Đăng nhập · OGK</title>
+  <link rel="icon" href="/static/mascots/khien_happy.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/ogk.css">
+</head>
+<body>
+<div class="auth">
+  <div class="hero" aria-hidden="true">
+    <img src="/static/mascots/tictac_happy.svg" alt=""><img src="/static/mascots/khien_encourage.svg" alt=""><img src="/static/mascots/sao_happy.svg" alt="">
+  </div>
+  <div class="card stack">
+    <h1>Chào ba mẹ 👋</h1>
+    <p class="muted">OpenGuard Kids — người bạn đồng hành, không phải phần mềm theo dõi.</p>
+    {% if error %}<div class="toast warn" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" action="/auth/login">
+      <div class="field"><label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username" required value="{{ email }}"></div>
+      <div class="field"><label for="password">Mật khẩu</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required minlength="10"></div>
+      <button class="btn" type="submit" style="width:100%">Đăng nhập</button>
+    </form>
+    <p class="small muted">Chưa có tài khoản? <a href="/auth/register">Đăng ký</a></p>
+  </div>
+</div>
+</body>
+</html>
