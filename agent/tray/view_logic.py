@@ -11,6 +11,42 @@ from dataclasses import dataclass, field
 from . import messages_vi as M
 
 MINT, SUN, CORAL, PRIMARY = "#10B981", "#FBBF24", "#FF6B6B", "#2563EB"
+ORANGE = "#FF8E53"  # cam ấm (cuối dải màu thời gian)
+
+
+def _mix(a: str, b: str, t: float) -> str:
+    t = max(0.0, min(1.0, t))
+    ca = [int(a[i:i + 2], 16) for i in (1, 3, 5)]
+    cb = [int(b[i:i + 2], 16) for i in (1, 3, 5)]
+    return "#" + "".join(f"{round(x + (y - x) * t):02X}" for x, y in zip(ca, cb))
+
+
+def smooth_time_color(remaining_sec: int) -> str:
+    """Màu thanh thời gian chuyển MƯỢT: Mint (>= 20 phút) -> Vàng nắng (10 phút) -> Cam ấm (0 phút).
+    Luôn đi kèm chữ số phút (không chỉ dùng màu — cho trẻ mù màu)."""
+    m = max(0.0, remaining_sec / 60)
+    if m >= 20:
+        return MINT
+    if m >= 10:
+        return _mix(SUN, MINT, (m - 10) / 10)
+    return _mix(ORANGE, SUN, m / 10)
+
+
+def quick_reasons(profile: dict) -> list[str]:
+    """Chip chọn nhanh lý do xin thêm giờ (trẻ nhỏ không phải gõ). Mỗi câu <= 200 ký tự (giới hạn IPC)."""
+    xung = profile.get("self_pronoun", "con")
+    x = xung[:1].upper() + xung[1:]
+    return [f"{x} đang làm nốt bài tập", f"Cho {xung} xin thêm 15 phút nữa nhé", f"{x} sắp lưu bài xong ạ"]
+
+
+def today_tiles(status: dict, today: dict | None) -> dict:
+    """Số liệu cho Bento "Hôm nay": học tập, giải trí, huy hiệu đúng giờ (dùng máy trong hạn mức)."""
+    cats = (today or {}).get("cats_today") or {}
+    used = int(status.get("used_sec", 0)) // 60
+    quota = int(status.get("quota_min", 0) or 0)
+    return {"used": used, "quota": quota, "study": int(cats.get("education", 0)),
+            "fun": int(cats.get("games", 0)) + int(cats.get("entertainment", 0)),
+            "on_time": quota > 0 and used <= quota and status.get("phase") != "locked"}
 
 
 def time_color(remaining_sec: int) -> str:
@@ -46,7 +82,7 @@ def mascot_for(kind: str) -> tuple[str, str]:
         "blocked_domain": ("khien", "happy"), "budget_exhausted": ("tictac", "encourage"),
         "request_approved": ("sao", "celebrate"), "request_denied": ("sao", "encourage"),
         "unlocked": ("sao", "happy"), "good_morning": ("tictac", "happy"), "policy_updated": ("khien", "happy"),
-        "offline_stale": ("khien", "remind"),
+        "offline_stale": ("khien", "remind"), "break_over": ("sao", "happy"),
     }.get(kind, ("tictac", "happy"))
 
 
@@ -85,7 +121,8 @@ def block_screen(status: dict, notification: dict | None = None) -> BlockScreen 
                            countdown=int(status.get("grace_left", 60)), can_ack_break=True)
     if phase == "locked":
         if reason == "parent":
-            return BlockScreen("tictac", "sleepy", what="Máy đang tạm nghỉ.",
+            until = status.get("lock_until")  # "Tạm nghỉ 2h": báo trước giờ mở lại => trẻ không bị bất ngờ
+            return BlockScreen("tictac", "sleepy", what=f"Máy tạm nghỉ đến {until}." if until else "Máy đang tạm nghỉ.",
                                why=M.render("parent_lock", profile, mode),
                                next_steps=[f"Ra nói chuyện với {call}", "Uống nước, vận động một chút"])
         sit = "locked_schedule" if reason == "schedule" else "locked_quota"
@@ -107,7 +144,7 @@ def toast_text(n: dict, profile: dict) -> str | None:
         return M.render("request_approved", profile, mode, phut=n.get("minutes", 15), loi_nhan=n.get("note") or None)
     if kind == "request_denied":
         return M.render("request_denied", profile, mode, loi_nhan=n.get("note") or None)
-    if kind in ("unlocked", "policy_updated", "good_morning", "offline_stale", "budget_exhausted"):
+    if kind in ("unlocked", "policy_updated", "good_morning", "offline_stale", "budget_exhausted", "break_over"):
         return M.render(kind, profile, mode, phut=status_quota(profile))
     return None
 

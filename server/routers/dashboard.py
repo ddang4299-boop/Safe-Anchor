@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from agent import schedule as sch
@@ -32,7 +32,7 @@ from ..context import AppContext, client_ip, get_ctx
 from ..db import get_db
 from ..models import (AuditLog, Child, Command, DailyUsage, Device, Event, IntegrityAlert, KidLink, PairingCode,
                       UnlockRequest)
-from ..policy_service import create_policy_version, current_policy, default_policy_body, school_schedule
+from ..policy_service import age_mode, create_policy_version, current_policy, default_policy_body, school_schedule
 from ..reports import child_report
 from ..security import format_pairing_code, new_pairing_code, random_token, sha256_hex
 from ..web import WebCtx, current_web, form_with_csrf, render
@@ -49,44 +49,69 @@ def nick(ctx: AppContext, child: Child) -> str:
     return ctx.cipher.decrypt(child.nickname_enc, "children.nickname")
 
 
+ACTIVITY = {"education": "Đang học tập", "games": "Đang chơi trò chơi", "entertainment": "Đang giải trí",
+            "social": "Đang dùng mạng xã hội"}
+WEEKDAY_FULL = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"]
+REST_NOTE = "Con nghỉ ngơi một chút cho đỡ mỏi mắt nhé, lát nữa mình tính tiếp!"
+
+
+def today_text() -> str:
+    d = datetime.now(timezone(timedelta(minutes=420)))
+    return f"{WEEKDAY_FULL[d.weekday()]}, {d.strftime('%d/%m/%Y')}"
+
+
 def device_view(ctx: AppContext, dev: Device) -> dict:
     st = json.loads(dev.last_state_json or "{}")
     online_ws = ctx.hub.is_online(dev.id)
     fresh = dev.last_seen and time.time() - dev.last_seen < ctx.settings.offline_after_sec
+    activity = ""
     if dev.revoked:
         status, label = "revoked", "Đã gỡ"
     elif not (online_ws or fresh):
         status, label = "offline", "Ngoại tuyến"
     elif st.get("phase") == "locked":
-        status, label = "locked", "Đang tạm nghỉ"
+        status, label = "locked", (f"Tạm nghỉ đến {st['lock_until']}" if st.get("lock_until") else "Đang tạm nghỉ")
     elif st.get("phase") == "grace":
         status, label = "grace", "Sắp tạm nghỉ"
     else:
-        status, label = "active", "Đang dùng"
+        # Chỉ biết NHÓM đang chạy (agent không gửi tên ứng dụng): "Online · Đang học tập".
+        running = st.get("running") or []
+        status, label = "active", "Online"
+        activity = next((ACTIVITY[c] for c in ("education", "games", "entertainment", "social") if c in running),
+                        "Đang dùng máy")
     return {"id": dev.id, "hostname": ctx.cipher.decrypt(dev.hostname_enc, "devices.hostname") or "Máy tính",
+            "short_id": dev.id[:8] + "…", "activity": activity,
             "status": status, "label": label, "online_ws": online_ws, "last_seen": dev.last_seen,
             "remaining_min": round((st.get("remaining_sec") or 0) / 60), "used_min": round((st.get("used_sec") or 0) / 60),
             "quota_min": st.get("quota_min"), "policy_version": dev.policy_version, "revoked": dev.revoked,
             "skew": round(dev.clock_skew or 0), "stale": st.get("stale")}
 
 
-def child_card(db: Session, ctx: AppContext, child: Child) -> dict:
+AGE_GROUP = {"mam": "Mầm 6–8", "choi": "Chồi 9–11"}
+
+
+def child_card(db: Session, ctx: AppContext, child: Child, with_report: bool = False) -> dict:
+    """Dữ liệu một thẻ "con" trên trang tổng quan. with_report=True: kèm báo cáo 7 ngày (biểu đồ, top
+    ứng dụng/tên miền, số lần bị chặn) để phụ huynh thấy ngay mà không phải bấm vào từng con (Hình 6)."""
     devs = [device_view(ctx, d) for d in child.devices if not d.revoked]
     pending = db.scalar(select(func.count()).select_from(UnlockRequest)
                         .where(UnlockRequest.child_id == child.id, UnlockRequest.status == "pending")) or 0
     pol = current_policy(db, child.id)
     alerts = db.scalar(select(func.count()).select_from(IntegrityAlert)
                        .where(IntegrityAlert.child_id == child.id, IntegrityAlert.ts > time.time() - 86400)) or 0
-    return {"id": child.id, "nickname": nick(ctx, child), "avatar": child.avatar_key, "devices": devs,
+    card = {"id": child.id, "nickname": nick(ctx, child), "avatar": child.avatar_key, "devices": devs,
             "pending": pending, "policy_version": pol.version if pol else 0, "alerts": alerts,
-            "age": datetime.now().year - child.birth_year}
+            "age": datetime.now().year - child.birth_year, "group": AGE_GROUP[age_mode(child.birth_year)]}
+    if with_report:
+        card["report"] = child_report(db, child.id, cipher=ctx.cipher)
+    return card
 
 
 def pending_requests(db: Session, ctx: AppContext, parent_id: int) -> list[dict]:
     rows = db.execute(select(UnlockRequest, Child).join(Child, UnlockRequest.child_id == Child.id)
                       .where(Child.parent_id == parent_id, UnlockRequest.status == "pending")
                       .order_by(UnlockRequest.created_at)).all()
-    return [{"id": r.id, "minutes": r.minutes, "created_at": r.created_at, "child": nick(ctx, c),
+    return [{"id": r.id, "minutes": r.minutes, "created_at": r.created_at, "child": nick(ctx, c), "avatar": c.avatar_key,
              "reason": ctx.cipher.decrypt(r.reason_enc, "unlock_requests.reason")} for r, c in rows]
 
 
@@ -148,16 +173,25 @@ SHA_RE = r"[0-9a-f]{64}"
 @router.get("/", response_class=HTMLResponse)
 def overview(request: Request, web: WebCtx = Depends(current_web), db: Session = Depends(get_db),
              ctx: AppContext = Depends(get_ctx)):
-    kids = [child_card(db, ctx, c) for c in children_of(db, web.parent.id)]
+    kids = [child_card(db, ctx, c, with_report=True) for c in children_of(db, web.parent.id)]
     return render(request, "overview.html", {"web": web, "kids": kids, "page": "overview", "ctx": ctx,
                                              "requests": pending_requests(db, ctx, web.parent.id),
-                                             "notes": NOTE_SUGGESTIONS})
+                                             "notes": NOTE_SUGGESTIONS, "today_text": today_text()})
+
+
+@router.get("/partials/status", response_class=HTMLResponse)
+def status_partial(request: Request, web: WebCtx = Depends(current_web), db: Session = Depends(get_db),
+                   ctx: AppContext = Depends(get_ctx)):
+    """Trạng thái thiết bị theo thời gian thực: trả về các thẻ thiết bị dạng hx-swap-oob => chỉ thay đúng thẻ
+    thiết bị (id="dev-..."), biểu đồ và ô đang gõ trên trang không bị vẽ lại."""
+    devs = [device_view(ctx, d) for c in children_of(db, web.parent.id) for d in c.devices if not d.revoked]
+    return render(request, "_status.html", {"devices": devs})
 
 
 @router.get("/partials/overview", response_class=HTMLResponse)
 def overview_partial(request: Request, web: WebCtx = Depends(current_web), db: Session = Depends(get_db),
                      ctx: AppContext = Depends(get_ctx)):
-    kids = [child_card(db, ctx, c) for c in children_of(db, web.parent.id)]
+    kids = [child_card(db, ctx, c, with_report=True) for c in children_of(db, web.parent.id)]
     return render(request, "_overview_cards.html", {"web": web, "kids": kids})
 
 
@@ -203,30 +237,28 @@ async def child_create(request: Request, web: WebCtx = Depends(current_web), db:
     audit.record(db, actor_type="parent", actor_id=str(web.parent.id), actor_label=web.actor_label,
                  ip=client_ip(request), child_id=child.id, entity="child", action="create")
     db.commit()
-    return RedirectResponse(f"/children/{child.id}?tab=devices", status_code=303)
+    return RedirectResponse(f"/children/{child.id}#ghep-thiet-bi", status_code=303)
 
 
 @router.get("/children/{child_id}", response_class=HTMLResponse)
-def child_page(child_id: int, request: Request, tab: str = "report", web: WebCtx = Depends(current_web),
+def child_page(child_id: int, request: Request, web: WebCtx = Depends(current_web),
                db: Session = Depends(get_db), ctx: AppContext = Depends(get_ctx)):
+    """MỘT trang cuộn cho mỗi con (theo Hình 7 của tài liệu hướng dẫn): chính sách + lịch 7×48, báo cáo,
+    thiết bị, ghép máy/link cho con, nhật ký, xóa dữ liệu. Link cũ dạng ?tab=... vẫn mở được (tham số bị bỏ qua)."""
     child = owned_child(db, web.parent.id, child_id)
     pol = current_policy(db, child.id)
     body = json.loads(pol.body_json) if pol else default_policy_body(child.birth_year)
-    data = {"web": web, "page": "child", "tab": tab, "child": child_card(db, ctx, child), "child_obj": child,
+    entries = db.scalars(select(AuditLog).where(AuditLog.child_id == child.id)
+                         .order_by(AuditLog.ts.desc()).limit(100)).all()
+    data = {"web": web, "page": "child", "child": child_card(db, ctx, child), "child_obj": child,
             "policy": body, "policy_version": pol.version if pol else 0, "categories": CATEGORY_CHOICES,
-            "msg": request.query_params.get("msg")}
-    if tab == "report":
-        data["report"] = child_report(db, child.id, cipher=ctx.cipher)
-        data["audience"] = "parent"
-    elif tab == "audit":
-        entries = db.scalars(select(AuditLog).where(AuditLog.child_id == child.id).order_by(AuditLog.ts.desc()).limit(100)).all()
-        data["entries"] = [{"e": e, "lines": audit.humanize(e), "when": audit.when_text(e.ts)} for e in entries]
-        data["alerts"] = db.scalars(select(IntegrityAlert).where(IntegrityAlert.child_id == child.id)
-                                    .order_by(IntegrityAlert.ts.desc()).limit(20)).all()
-    elif tab == "devices":
-        data["devices"] = [device_view(ctx, d) for d in child.devices]
-    elif tab == "time":
-        data["school_template"] = school_schedule()
+            "msg": request.query_params.get("msg"),
+            "report": child_report(db, child.id, cipher=ctx.cipher), "audience": "parent",
+            "entries": [{"e": e, "who": audit.actor_text(e), "lines": audit.humanize(e)} for e in entries],
+            "alerts": db.scalars(select(IntegrityAlert).where(IntegrityAlert.child_id == child.id)
+                                 .order_by(IntegrityAlert.ts.desc()).limit(20)).all(),
+            "devices": [device_view(ctx, d) for d in child.devices],
+            "school_template": school_schedule()}
     return render(request, "child.html", data)
 
 
@@ -247,7 +279,7 @@ async def child_profile_update(child_id: int, request: Request, web: WebCtx = De
         db.commit()
         for d in child.devices:  # hồ sơ nằm trong chính sách đã ký => báo agent tải lại
             await ctx.hub.send(d.id, {"type": "policy_changed"})
-    return RedirectResponse(f"/children/{child.id}?tab=devices&msg=Đã+lưu+hồ+sơ", status_code=303)
+    return RedirectResponse(f"/children/{child.id}?msg=Đã+lưu+hồ+sơ#ho-so", status_code=303)
 
 
 # ------------------------------------------------------------------ chính sách
@@ -265,23 +297,60 @@ def _int(form, key, lo, hi, default):
         return default
 
 
+def _apply_time(form, p: dict) -> None:
+    p["quota"]["weekday_min"] = _int(form, "weekday_min", 0, 1440, 90)
+    p["quota"]["weekend_min"] = _int(form, "weekend_min", 0, 1440, 150)
+    budgets = {}
+    for cat in ("games", "entertainment"):
+        if str(form.get(f"budget_{cat}", "")).strip():
+            budgets[cat] = _int(form, f"budget_{cat}", 0, 1440, 45)
+    p["category_budgets"] = budgets
+
+
+def _apply_filter(form, p: dict) -> None:
+    # Danh sách từ trình duyệt được LỌC LẠI bằng regex (tên miền/.exe/SHA-256): không tin dữ liệu phía client.
+    p["dns"]["blocked_categories"] = [c for c in form.getlist("blocked_categories") if c in CATEGORY_CHOICES]
+    p["dns"]["safesearch"] = form.get("safesearch") == "on"
+    p["dns"]["block_doh"] = form.get("block_doh") == "on"
+    p["dns"]["block"] = [normalize(d) for d in lines(str(form.get("dns_block", "")), DOMAIN_RE)]
+    p["dns"]["allow"] = [normalize(d) for d in lines(str(form.get("dns_allow", "")), DOMAIN_RE)]
+    p["app_rules"]["block_names"] = lines(str(form.get("app_block_names", "")), EXE_RE)
+    p["app_rules"]["block_sha256"] = lines(str(form.get("app_block_sha256", "")), SHA_RE)
+    p["app_rules"]["allow_names"] = lines(str(form.get("app_allow_names", "")), EXE_RE)
+
+
+@router.post("/children/{child_id}/policy", response_class=HTMLResponse)
+async def policy_all(child_id: int, request: Request, web: WebCtx = Depends(current_web), db: Session = Depends(get_db),
+                     ctx: AppContext = Depends(get_ctx)):
+    """Lưu cả chính sách bằng MỘT biểu mẫu (Hình 7): hạn mức + lịch 7×48 + nhóm nội dung + danh sách miền/ứng dụng.
+    Mỗi lần lưu = một phiên bản mới, audit giá trị cũ/mới, đẩy policy_changed (trong save_policy)."""
+    child = owned_child(db, web.parent.id, child_id)
+    form = await form_with_csrf(request, web, ctx)
+    s = str(form.get("schedule", ""))
+    if not sch.validate(s):  # server KIỂM TRA LẠI chuỗi 336 ký tự, không tin JavaScript phía client
+        return _msg_html(False, "Lịch không hợp lệ (cần đúng 336 ô 0/1).")
+
+    def mutate(p):
+        _apply_time(form, p)
+        p["schedule"] = s
+        _apply_filter(form, p)
+
+    ok, msg = await save_policy(db, ctx, web, child, client_ip(request), mutate)
+    resp = _msg_html(ok, msg)
+    pol = current_policy(db, child.id)
+    if ok and pol:
+        # HTMX out-of-band swap: cập nhật nhãn "phiên bản N" ở đầu thẻ mà không tải lại trang.
+        oob = f'<span class="ver" id="policy-ver" hx-swap-oob="true">phiên bản {pol.version}</span>'
+        resp = HTMLResponse(resp.body.decode() + oob)
+    return resp
+
+
 @router.post("/children/{child_id}/policy/time", response_class=HTMLResponse)
 async def policy_time(child_id: int, request: Request, web: WebCtx = Depends(current_web), db: Session = Depends(get_db),
                       ctx: AppContext = Depends(get_ctx)):
     child = owned_child(db, web.parent.id, child_id)
     form = await form_with_csrf(request, web, ctx)
-
-    def mutate(p):
-        p["quota"]["weekday_min"] = _int(form, "weekday_min", 0, 1440, 90)
-        p["quota"]["weekend_min"] = _int(form, "weekend_min", 0, 1440, 150)
-        budgets = {}
-        for cat in ("games", "entertainment"):
-            v = str(form.get(f"budget_{cat}", "")).strip()
-            if v:
-                budgets[cat] = _int(form, f"budget_{cat}", 0, 1440, 45)
-        p["category_budgets"] = budgets
-
-    return _msg_html(*await save_policy(db, ctx, web, child, client_ip(request), mutate))
+    return _msg_html(*await save_policy(db, ctx, web, child, client_ip(request), lambda p: _apply_time(form, p)))
 
 
 @router.post("/children/{child_id}/policy/schedule", response_class=HTMLResponse)
@@ -304,18 +373,7 @@ async def policy_filter(child_id: int, request: Request, web: WebCtx = Depends(c
                         db: Session = Depends(get_db), ctx: AppContext = Depends(get_ctx)):
     child = owned_child(db, web.parent.id, child_id)
     form = await form_with_csrf(request, web, ctx)
-
-    def mutate(p):
-        p["dns"]["blocked_categories"] = [c for c in form.getlist("blocked_categories") if c in CATEGORY_CHOICES]
-        p["dns"]["safesearch"] = form.get("safesearch") == "on"
-        p["dns"]["block_doh"] = form.get("block_doh") == "on"
-        p["dns"]["block"] = [normalize(d) for d in lines(str(form.get("dns_block", "")), DOMAIN_RE)]
-        p["dns"]["allow"] = [normalize(d) for d in lines(str(form.get("dns_allow", "")), DOMAIN_RE)]
-        p["app_rules"]["block_names"] = lines(str(form.get("app_block_names", "")), EXE_RE)
-        p["app_rules"]["block_sha256"] = lines(str(form.get("app_block_sha256", "")), SHA_RE)
-        p["app_rules"]["allow_names"] = lines(str(form.get("app_allow_names", "")), EXE_RE)
-
-    return _msg_html(*await save_policy(db, ctx, web, child, client_ip(request), mutate))
+    return _msg_html(*await save_policy(db, ctx, web, child, client_ip(request), lambda p: _apply_filter(form, p)))
 
 
 # ------------------------------------------------------------------ ghép đôi & thiết bị
@@ -346,6 +404,8 @@ async def device_command(device_id: str, request: Request, web: WebCtx = Depends
     if ctype not in ("lock_now", "unlock", "add_time"):
         raise HTTPException(400, detail="Lệnh không hợp lệ")
     payload = {"by": web.actor_label}
+    if ctype == "lock_now" and str(form.get("minutes", "")).strip():
+        payload["minutes"] = _int(form, "minutes", 5, 24 * 60, 120)  # "Tạm nghỉ 2h": agent tự mở khi hết hạn
     if ctype == "add_time":
         payload["minutes"] = _int(form, "minutes", 5, 120, 15)
     if ctype == "unlock":
@@ -380,6 +440,8 @@ async def kid_link(child_id: int, request: Request, web: WebCtx = Depends(curren
     child = owned_child(db, web.parent.id, child_id)
     await form_with_csrf(request, web, ctx)
     token = random_token(24)
+    # Tạo link mới => link cũ HẾT HIỆU LỰC: lỡ lộ link cũ (gửi nhầm, lịch sử trình duyệt) thì chỉ cần tạo lại.
+    db.execute(update(KidLink).where(KidLink.child_id == child.id, KidLink.revoked.is_(False)).values(revoked=True))
     db.add(KidLink(token_hash=sha256_hex(token), child_id=child.id, created_at=time.time()))
     audit.record(db, actor_type="parent", actor_id=str(web.parent.id), actor_label=web.actor_label,
                  ip=client_ip(request), child_id=child.id, entity="kidlink", action="create")
@@ -401,6 +463,8 @@ async def decide_request(request_id: int, decision: str, request: Request, web: 
         return render(request, "_requests.html", {"web": web, "requests": pending_requests(db, ctx, web.parent.id),
                                                   "notes": NOTE_SUGGESTIONS})
     note = str(form.get("note", "")).strip()[:200]
+    if decision == "deny" and not note:
+        note = REST_NOTE  # "Nhắc bé nghỉ ngơi": luôn kèm lời nhắn dịu dàng, không từ chối "im lặng"
     minutes = _int(form, "minutes", 5, 120, req.minutes)
     req.status = "approved" if decision == "approve" else "denied"
     req.decided_at = time.time()

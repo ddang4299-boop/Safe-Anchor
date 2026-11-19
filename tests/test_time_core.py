@@ -198,3 +198,20 @@ def test_stale_policy_falls_back_to_default_time_limits():
     assert core.is_stale()
     assert core.status()["quota_min"] == 120  # fail-open có giới hạn
     assert core.time_policy()["dns"] == core.policy["dns"]  # lọc web vẫn giữ (fail-closed)
+
+
+def test_timed_break_unlocks_itself_and_survives_restart():
+    """'Tạm nghỉ 2h': hết hạn agent TỰ mở (không cần mạng); mốc hết hạn nằm trong snapshot."""
+    fc, core = make_core(vn(2026, 11, 18), quota=600)
+    core.apply_command("lock_now", {"by": "Mẹ", "minutes": 120})
+    assert core.phase == "locked" and core.status()["lock_until"] == "12:00"
+    for _ in range(6):  # 1 giờ sau: vẫn tạm nghỉ
+        fc.advance(600)
+        core.tick()
+    assert core.phase == "locked"
+    assert core.snapshot()["parent_lock_until"] is not None
+    for _ in range(7):  # quá mốc 2 giờ
+        fc.advance(600)
+        core.tick()
+    assert core.phase == "active" and not core.parent_lock and core.status()["lock_until"] is None
+    assert any(n["kind"] == "break_over" for n in core.status()["notifications"])

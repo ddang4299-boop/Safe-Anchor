@@ -1,22 +1,18 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block content %}
-<div class="mascot-say" style="margin-bottom:16px">
-  <img src="/static/mascots/sao_happy.svg" alt="Sao Nhỏ">
-  <div class="speech"><strong>Chào {{ web.actor_label }}!</strong> Đây là tình hình của các con. Trang tự cập nhật mỗi 10 giây.</div>
+<div class="page-head">
+  <div class="hello">
+    <img src="/static/mascots/sao_happy.svg" alt="">
+    <div><h1>Chào {{ web.actor_label }}!</h1><p class="sub">{{ today_text }} · trạng thái máy tự cập nhật mỗi 10 giây</p></div>
+  </div>
+  <a class="btn btn-white" href="/children/new">{{ icon('plus') }}Thêm hồ sơ con</a>
 </div>
 
-<div id="cmd-result" aria-live="polite"></div>
+<div id="requests" hx-get="/partials/requests" hx-trigger="every 5s" hx-swap="innerHTML">{% include "_requests.html" %}</div>
 
-<section class="card stack" style="margin-bottom:16px">
-  <h2>🙋 Yêu cầu của các con</h2>
-  <div id="requests" hx-get="/partials/requests" hx-trigger="every 5s" hx-swap="innerHTML">
-    {% include "_requests.html" %}
-  </div>
-</section>
+<div id="kids">{% include "_overview_cards.html" %}</div>
 
-<section aria-label="Các con">
-  <div id="kids" class="grid two" hx-get="/partials/overview" hx-trigger="every 10s" hx-swap="innerHTML">
-    {% include "_overview_cards.html" %}
-  </div>
-</section>
+{# Chỉ làm mới thẻ thiết bị (hx-swap-oob), biểu đồ không bị vẽ lại #}
+<div hx-get="/partials/status" hx-trigger="every 10s" hx-swap="none" aria-hidden="true"></div>
 {% endblock %}

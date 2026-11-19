@@ -85,9 +85,15 @@ def when_text(ts: float, tz_offset_min: int = 420, now: float | None = None) -> 
     return f"{day}, {d.strftime('%H:%M')}"
 
 
+def actor_text(e: AuditLog) -> str:
+    """Ai đã làm: tên gọi người giám hộ ("Mẹ"), hoặc "Máy tính"/"Hệ thống"/"Con"."""
+    return e.actor_label or {"parent": "Ba mẹ", "device": "Máy tính", "system": "Hệ thống",
+                             "child": "Con"}.get(e.actor_type, "Ai đó")
+
+
 def humanize(e: AuditLog) -> list[str]:
     """Trả về các câu dễ hiểu (một thay đổi có thể sinh nhiều câu)."""
-    who = e.actor_label or {"parent": "Ba mẹ", "device": "Máy tính", "system": "Hệ thống", "child": "Con"}.get(e.actor_type, "Ai đó")
+    who = actor_text(e)
     old = json.loads(e.old_json or "null") or {}
     new = json.loads(e.new_json or "null") or {}
     key = f"{e.entity}.{e.action}"
@@ -104,7 +110,8 @@ def humanize(e: AuditLog) -> list[str]:
         return lines or [f"{who} đã cập nhật cài đặt"]
     simple = {
         "policy.create": f"{who} đã tạo cài đặt ban đầu",
-        "command.lock_now": f"{who} đã cho máy tạm nghỉ ngay",
+        "command.lock_now": (f"{who} đã cho máy tạm nghỉ {new.get('minutes')} phút" if new.get("minutes")
+                             else f"{who} đã cho máy tạm nghỉ ngay"),
         "command.unlock": f"{who} đã mở lại máy",
         "command.add_time": f"{who} đã tặng thêm {new.get('minutes', 15)} phút",
         "request.approve": f"{who} đã đồng ý cho thêm {new.get('minutes', '')} phút",

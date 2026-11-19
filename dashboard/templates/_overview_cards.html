@@ -1,41 +1,59 @@
+{# Mỗi con một cụm Bento: thẻ đầu (mascot + chỉ số nhanh), biểu đồ 7 ngày, thiết bị + nút tác vụ nhanh,
+   top ứng dụng, top tên miền (đủ các mục của Hình 6 trong tài liệu hướng dẫn). #}
+{% from "_icons.html" import icon %}
+{% from "_macros.html" import bars, toplist, chart, device_block %}
 {% for kid in kids %}
-<article class="card stack">
-  <div class="kid-head">
-    <img src="/static/mascots/{{ kid.avatar }}_happy.svg" alt="">
-    <div style="flex:1;min-width:0">
-      <div class="name">{{ kid.nickname }}</div>
-      <div class="small muted">{{ kid.age }} tuổi · chính sách v{{ kid.policy_version }}</div>
+{% set r = kid.report %}
+<section class="bento" aria-label="{{ kid.nickname }}">
+  <div class="card pad-lg s12">
+    <div class="kid-hero">
+      <div class="who-kid">
+        <div class="avatar xl {{ kid.avatar }}"><img src="/static/mascots/{{ kid.avatar }}_happy.svg" alt=""></div>
+        <div>
+          <div class="kid-name">{{ kid.nickname }}</div>
+          <div class="kid-meta"><span class="tag">{{ kid.age }} tuổi</span><span class="tag">Nhóm {{ kid.group }}</span>
+            <span class="ver">Chính sách v{{ kid.policy_version }}</span>
+            {% if kid.pending %}<span class="tag">{{ icon('hand') }}{{ kid.pending }} yêu cầu chờ</span>{% endif %}</div>
+        </div>
+      </div>
+      <a class="btn btn-white" href="/children/{{ kid.id }}">{{ icon('sliders-horizontal') }}Cài đặt chi tiết</a>
     </div>
-    {% if kid.pending %}<span class="badge" title="Yêu cầu đang chờ">{{ kid.pending }}</span>{% endif %}
-  </div>
-  {% if kid.alerts %}
-  <div class="toast warn small">⏰ Có {{ kid.alerts }} cảnh báo đồng hồ máy bị chỉnh trong 24 giờ qua — thời gian vẫn được đếm đúng.</div>
-  {% endif %}
-  {% for d in kid.devices %}
-  <div class="device">
-    <div class="row" style="justify-content:space-between">
-      <strong>💻 {{ d.hostname }}</strong>
-      <span class="pill {{ d.status }}">{% if d.status == 'active' %}●{% elif d.status == 'locked' %}☾{% elif d.status == 'grace' %}◔{% else %}○{% endif %} {{ d.label }}</span>
-    </div>
-    {% if d.status != 'offline' %}
-    {% set pct = (100 * d.remaining_min / d.quota_min)|round|int if d.quota_min else 0 %}
-    <div class="timebar {% if d.remaining_min <= 1 %}out{% elif d.remaining_min <= 10 %}low{% endif %}" role="img"
-         aria-label="Còn {{ d.remaining_min }} phút"><span style="width:{{ [pct, 100]|min }}%"></span></div>
-    <div class="small muted">Còn <strong>{{ d.remaining_min|mins }}</strong> · đã dùng {{ d.used_min|mins }} hôm nay</div>
-    {% else %}
-    <div class="small muted">Lần cuối thấy: {{ d.last_seen|hhmm }}. Lệnh gửi lúc này sẽ áp dụng khi máy kết nối lại.</div>
-    {% endif %}
-    <div class="row" style="margin-top:8px">
-      <button class="btn small ghost" hx-post="/devices/{{ d.id }}/command" hx-vals='{"cmd": "lock_now"}' hx-target="#cmd-result">☾ Tạm nghỉ ngay</button>
-      <button class="btn small ghost" hx-post="/devices/{{ d.id }}/command" hx-vals='{"cmd": "unlock", "minutes": "30"}' hx-target="#cmd-result">☀ Mở khóa 30′</button>
-      <button class="btn small mint" hx-post="/devices/{{ d.id }}/command" hx-vals='{"cmd": "add_time", "minutes": "15"}' hx-target="#cmd-result">+15 phút</button>
+    {% if kid.alerts %}<div class="toast warn alert">{{ icon('triangle-alert') }}<span>Có {{ kid.alerts }} cảnh báo đồng hồ máy bị chỉnh trong 24 giờ qua — thời gian vẫn được đếm đúng nhờ đồng hồ đơn điệu.</span></div>{% endif %}
+    <div class="mini-stats" style="margin-top:18px">
+      <div class="mini"><span class="eyebrow">{{ icon('clock') }}Hôm nay</span><b>{{ r.today_minutes|mins }}</b></div>
+      <div class="mini"><span class="eyebrow">{{ icon('calendar-days') }}7 ngày</span><b>{{ r.week_minutes|mins }}</b></div>
+      <div class="mini"><span class="eyebrow">{{ icon('graduation-cap') }}Học tập 7 ngày</span><b>{{ r.cats_week.get('education', 0)|mins }}</b></div>
+      <div class="mini"><span class="eyebrow">{{ icon('shield-check') }}Bị chặn</span><b>{{ r.blocked_total }} lần</b></div>
     </div>
   </div>
-  {% else %}
-  <div class="small muted">Chưa có máy tính nào. <a href="/children/{{ kid.id }}?tab=devices">Ghép máy của con →</a></div>
-  {% endfor %}
-  <a class="btn ghost" href="/children/{{ kid.id }}">Xem báo cáo & cài đặt →</a>
-</article>
+
+  <div class="card s7 fill">
+    <div class="card-head"><h2 class="card-title"><span class="tile-ic">{{ icon('chart-column') }}</span>Thời lượng 7 ngày</h2><span class="h-note">phút mỗi ngày · cột cam là hôm nay</span></div>
+    {% call chart('columns', r.daily|map(attribute='date')|list, r.daily|map(attribute='minutes')|list, 'phút', 'indigo', 240, 'Thời lượng dùng máy 7 ngày') %}{{ bars(r.daily, r.max_day) }}{% endcall %}
+  </div>
+
+  <div class="card s5">
+    <div class="card-head"><h2 class="card-title"><span class="tile-ic blue">{{ icon('laptop') }}</span>Thiết bị</h2></div>
+    <div class="devices">
+      {% for d in kid.devices %}{{ device_block(d) }}
+      {% else %}<p class="muted">Chưa ghép máy nào. <a href="/children/{{ kid.id }}#ghep-thiet-bi">Ghép máy của con →</a></p>{% endfor %}
+    </div>
+  </div>
+
+  {% set apps = r.top_apps[:5] %}
+  <div class="card s6 fill">
+    <div class="card-head"><h2 class="card-title"><span class="tile-ic grape">{{ icon('app-window') }}</span>Top ứng dụng</h2><span class="h-note">phút · 7 ngày</span></div>
+    {% call chart('hbar', apps|map(attribute='display')|list, apps|map(attribute='minutes')|list, 'phút', 'grape', 56 + 46 * (apps|length or 1), 'Top ứng dụng') %}{{ toplist(r.top_apps, 5, 'app') }}{% endcall %}
+  </div>
+  {% set doms = r.top_domains[:5] %}
+  <div class="card s6 fill">
+    <div class="card-head"><h2 class="card-title"><span class="tile-ic mint">{{ icon('globe') }}</span>Top tên miền</h2><span class="h-note">lượt · 7 ngày</span></div>
+    {% call chart('hbar', doms|map(attribute='name')|list, doms|map(attribute='count')|list, 'lượt', 'mint', 56 + 46 * (doms|length or 1), 'Top tên miền') %}{{ toplist(r.top_domains, 5, 'domain') }}{% endcall %}
+  </div>
+</section>
 {% else %}
-<div class="card empty"><img src="/static/mascots/tictac_encourage.svg" alt="">Chưa có hồ sơ của con. <a href="/children/new">Thêm con →</a></div>
+<section class="card pad-lg">
+  <div class="empty-state"><img src="/static/mascots/tictac_encourage.svg" alt="">
+    <div><h2 style="margin:0 0 6px">Chưa có hồ sơ của con</h2><a class="btn" href="/children/new">{{ icon('plus') }}Thêm hồ sơ con</a></div></div>
+</section>
 {% endfor %}

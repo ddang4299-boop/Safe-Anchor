@@ -1,24 +1,156 @@
 {% extends "base.html" %}
-{% block title %}{{ child.nickname }} · OGK{% endblock %}
+{% from "_icons.html" import icon %}
+{% from "_macros.html" import device_block, status_pill %}
+{% block title %}{{ child.nickname }} · OpenGuard Kids{% endblock %}
 {% block head %}<script src="/static/js/schedule.js" defer></script>{% endblock %}
 {% block content %}
-<div class="kid-head">
-  <img src="/static/mascots/{{ child.avatar }}_happy.svg" alt="">
-  <div>
-    <h1 style="margin:0">{{ child.nickname }}</h1>
-    <div class="small muted">{{ child.age }} tuổi · chính sách phiên bản {{ policy_version }}</div>
+{% set CAT_ICON = {"education": "graduation-cap", "entertainment": "film", "social": "message-circle", "games": "gamepad-2",
+                   "inappropriate": "eye-off", "uncategorized": "puzzle"} %}
+<a class="back" href="/">{{ icon('arrow-left') }}Tổng quan</a>
+
+<section class="card pad-lg" style="margin-bottom:18px">
+  <div class="kid-hero">
+    <div class="who-kid">
+      <div class="avatar xl {{ child.avatar }}"><img src="/static/mascots/{{ child.avatar }}_happy.svg" alt=""></div>
+      <div><h1 style="margin:0">{{ child.nickname }}</h1>
+        <div class="kid-meta"><span class="tag">{{ child.age }} tuổi</span><span class="tag">Nhóm {{ child.group }}</span>
+          <span class="ver">Chính sách v{{ policy_version }}</span></div></div>
+    </div>
+    <div class="row">{% for d in devices if not d.revoked %}{{ status_pill(d) }}{% endfor %}</div>
   </div>
-</div>
-{% if msg %}<div class="toast ok">{{ msg }}</div>{% endif %}
-<nav class="tabs" aria-label="Mục">
-  {% for key, label in [('report','📊 Báo cáo'), ('time','⏰ Thời gian & lịch'), ('filter','🛡️ Web & ứng dụng'), ('devices','💻 Thiết bị'), ('audit','📜 Nhật ký')] %}
-  <a href="/children/{{ child.id }}?tab={{ key }}" {% if tab == key %}aria-current="page"{% endif %}>{{ label }}</a>
-  {% endfor %}
+  {% if msg %}<div class="toast ok">{{ icon('circle-check') }}<span>{{ msg }}</span></div>{% endif %}
+  {% if child.alerts %}<div class="toast warn">{{ icon('triangle-alert') }}<span>Có {{ child.alerts }} cảnh báo đồng hồ máy bị chỉnh trong 24 giờ qua — thời gian vẫn được đếm đúng nhờ đồng hồ đơn điệu.</span></div>{% endif %}
+</section>
+
+<nav class="jump glass" aria-label="Các mục">
+  <a href="#chinh-sach">{{ icon('sliders-horizontal') }}Chính sách</a>
+  <a href="#lich-tuan">{{ icon('calendar-days') }}Lịch tuần</a>
+  <a href="#bao-cao">{{ icon('chart-column') }}Báo cáo</a>
+  <a href="#thiet-bi">{{ icon('laptop') }}Thiết bị</a>
+  <a href="#ghep-thiet-bi">{{ icon('link') }}Ghép máy &amp; link</a>
+  <a href="#nhat-ky">{{ icon('history') }}Nhật ký</a>
+  <a href="#xoa-du-lieu">{{ icon('trash-2') }}Xóa dữ liệu</a>
 </nav>
-{% if tab == 'report' %}{% include "_tab_report.html" %}
-{% elif tab == 'time' %}{% include "_tab_time.html" %}
-{% elif tab == 'filter' %}{% include "_tab_filter.html" %}
-{% elif tab == 'devices' %}{% include "_tab_devices.html" %}
-{% elif tab == 'audit' %}{% include "_tab_audit.html" %}
-{% endif %}
+
+{# MỘT biểu mẫu cho cả chính sách (Hình 7): lưu = một phiên bản mới, audit cũ/mới, đẩy policy_changed #}
+<form id="chinh-sach" hx-post="/children/{{ child.id }}/policy" hx-target="#policy-result">
+<div class="bento">
+  <section class="card s5">
+    <div class="card-head"><h2 class="card-title"><span class="tile-ic">{{ icon('hourglass') }}</span>Hạn mức mỗi ngày</h2><span class="ver" id="policy-ver">phiên bản {{ policy_version }}</span></div>
+    <div class="grid2">
+      <div class="field"><label for="wd">Ngày thường</label><div class="suffix" data-suffix="phút"><input id="wd" name="weekday_min" type="number" min="0" max="1440" value="{{ policy.quota.weekday_min }}"></div></div>
+      <div class="field"><label for="we">Cuối tuần</label><div class="suffix" data-suffix="phút"><input id="we" name="weekend_min" type="number" min="0" max="1440" value="{{ policy.quota.weekend_min }}"></div></div>
+      <div class="field"><label for="bg">Riêng trò chơi</label><div class="suffix" data-suffix="phút"><input id="bg" name="budget_games" type="number" min="0" max="1440" placeholder="không giới hạn riêng" value="{{ policy.category_budgets.games if policy.category_budgets.games is defined else '' }}"></div></div>
+      <div class="field"><label for="be">Riêng giải trí</label><div class="suffix" data-suffix="phút"><input id="be" name="budget_entertainment" type="number" min="0" max="1440" placeholder="không giới hạn riêng" value="{{ policy.category_budgets.entertainment if policy.category_budgets.entertainment is defined else '' }}"></div></div>
+    </div>
+    <p class="hint">Chỉ đếm khi con thật sự dùng máy (khóa màn hình hoặc không chạm phím/chuột quá 5 phút thì dừng). Nhắc lúc còn 10, 5, 1 phút, rồi cho 60 giây để lưu bài. Đổi giờ máy không làm tăng thời gian.</p>
+  </section>
+
+  <section class="card s7">
+    <div class="card-head"><h2 class="card-title"><span class="tile-ic coral">{{ icon('shield-check') }}</span>Nội dung &amp; bảo vệ</h2></div>
+    <p class="eyebrow" style="margin-bottom:10px">Nhóm nội dung bị chặn — bấm để bật/tắt</p>
+    <div class="toggles">
+      {% for c in categories %}<label class="toggle"><input type="checkbox" name="blocked_categories" value="{{ c }}" {% if c in policy.dns.blocked_categories %}checked{% endif %}><span>{{ icon(CAT_ICON[c]) }}{{ c|cat_label }}</span></label>{% endfor %}
+    </div>
+    <div style="margin-top:18px">
+      <label class="switch"><input type="checkbox" name="safesearch" {% if policy.dns.safesearch %}checked{% endif %}>Bắt buộc Tìm kiếm an toàn (Google, YouTube, Bing, DuckDuckGo)</label>
+      <label class="switch"><input type="checkbox" name="block_doh" {% if policy.dns.block_doh %}checked{% endif %}>Chặn đường vòng DNS-over-HTTPS</label>
+    </div>
+    <p class="hint">Khi một trang/ứng dụng chưa mở, máy của con luôn giải thích lý do bằng lời nhẹ nhàng — không chặn im lặng.</p>
+  </section>
+
+  <section class="card s12" id="lich-tuan">
+    <div class="card-head"><h2 class="card-title"><span class="tile-ic mint">{{ icon('calendar-days') }}</span>Lịch tuần 7×48</h2>
+      <div class="chips">
+        <button type="button" class="chip" data-sched-template="{{ school_template }}">{{ icon('book-open') }}Mẫu ngày đi học</button>
+        <button type="button" class="chip" data-sched-fill="06:00-21:00">{{ icon('sun') }}Mỗi ngày 6h–21h</button>
+        <button type="button" class="chip" data-sched-fill="clear">{{ icon('x') }}Xóa hết</button>
+      </div></div>
+    <p class="hint" style="margin-top:0">Chạm hoặc kéo chuột để tô từng ô 30 phút. Ngoài giờ được dùng, máy khóa sau 60 giây ân hạn. Trên điện thoại, vuốt ngang vùng lưới.</p>
+    <input type="hidden" name="schedule" id="schedule-input" value="{{ policy.schedule }}">
+    <div class="sched-wrap"><div class="sched" data-schedule-for="schedule-input" role="grid" aria-label="Lịch tuần 7 ngày × 48 ô 30 phút"></div></div>
+    <div class="legend"><span><i class="on"></i>Được dùng máy</span><span><i class="off"></i>Giờ nghỉ (máy khóa)</span></div>
+  </section>
+
+  <section class="card s12">
+    <div class="card-head"><h2 class="card-title"><span class="tile-ic blue">{{ icon('globe') }}</span>Trang web &amp; ứng dụng riêng</h2></div>
+    <div class="grid2">
+      <div class="field"><label for="dns_block">Chặn thêm tên miền (mỗi dòng một miền, tự áp cho mọi tên miền con)</label>
+        <textarea id="dns_block" name="dns_block" placeholder="vd: test-block.example">{{ policy.dns.block|join('\n') }}</textarea></div>
+      <div class="field"><label for="dns_allow">Luôn cho phép (ngoại lệ, ưu tiên hơn danh sách chặn)</label>
+        <textarea id="dns_allow" name="dns_allow" placeholder="vd: khanacademy.org">{{ policy.dns.allow|join('\n') }}</textarea></div>
+    </div>
+    <details class="more">
+      <summary>{{ icon('app-window') }} Ứng dụng: chặn hoặc luôn cho phép theo tên tệp / SHA-256</summary>
+      <div class="grid2">
+        <div class="field"><label for="abn">Chặn theo tên tệp (.exe)</label><textarea id="abn" name="app_block_names" placeholder="vd: robloxplayerbeta.exe">{{ policy.app_rules.block_names|join('\n') }}</textarea></div>
+        <div class="field"><label for="abs">Chặn theo SHA-256 (đổi tên tệp vẫn nhận ra)</label><textarea id="abs" name="app_block_sha256" placeholder="64 ký tự hex — python tools/hash_exe.py game.exe">{{ policy.app_rules.block_sha256|join('\n') }}</textarea></div>
+      </div>
+      <div class="field"><label for="aan">Luôn cho phép (tên tệp)</label><textarea id="aan" name="app_allow_names">{{ policy.app_rules.allow_names|join('\n') }}</textarea></div>
+    </details>
+    <button class="btn btn-lg btn-block" type="submit">{{ icon('circle-check') }}Lưu chính sách</button>
+    <div id="policy-result" aria-live="polite"></div>
+  </section>
+</div>
+</form>
+
+{% include "_report.html" %}
+
+<div class="bento">
+  <section class="card s7" id="thiet-bi">
+    <div class="card-head"><h2 class="card-title"><span class="tile-ic blue">{{ icon('laptop') }}</span>Thiết bị</h2></div>
+    <div class="devices">{% for d in devices %}{{ device_block(d, true) }}{% else %}<p class="muted">Chưa có máy nào. Tạo mã ghép ở thẻ bên cạnh.</p>{% endfor %}</div>
+  </section>
+  <section class="card s5 tint-indigo" id="ghep-thiet-bi">
+    <img class="deco ruler" src="/static/img/deco_ruler.svg" alt="">
+    <div class="card-head"><h2 class="card-title"><span class="tile-ic">{{ icon('link') }}</span>Ghép thiết bị &amp; link cho con</h2></div>
+    <p class="small">Mã 8 ký tự, hạn 10 phút, dùng một lần. Tạo mã là <b>xác nhận ba mẹ đồng ý</b> cài OGK cho con và được ghi vào nhật ký.
+      Link cho con là trang chỉ đọc “Hôm nay em đã dùng gì”; tạo link mới thì link cũ hết hiệu lực.</p>
+    <div class="row">
+      <button class="btn" hx-post="/children/{{ child.id }}/pairing-code" hx-target="#pairing">{{ icon('key-round') }}Tạo mã ghép 8 ký tự</button>
+      <button class="btn btn-white" hx-post="/children/{{ child.id }}/kid-link" hx-target="#kidlink">{{ icon('eye') }}Tạo link cho con</button>
+    </div>
+    <div id="pairing" aria-live="polite"></div>
+    <div id="kidlink" aria-live="polite"></div>
+  </section>
+
+  <form class="card s4" id="ho-so" method="post" action="/children/{{ child.id }}/profile">
+    <div class="card-head"><h2 class="card-title"><span class="tile-ic sun">{{ icon('smile') }}</span>Hồ sơ của con</h2></div>
+    <input type="hidden" name="csrf_token" value="{{ web.csrf }}">
+    <div class="field"><label for="nn">Tên gọi ở nhà (≤ 20 ký tự)</label><input id="nn" name="nickname" type="text" maxlength="20" value="{{ child.nickname }}"></div>
+    <div class="field"><label for="sp">Con tự xưng là</label>
+      <select id="sp" name="self_pronoun">{% for p in ('con', 'em', 'mình', 'cháu') %}<option {% if p == child_obj.self_pronoun %}selected{% endif %}>{{ p }}</option>{% endfor %}</select></div>
+    <p class="hint">Tên gọi được mã hóa AES-256-GCM khi lưu, chỉ dùng để mascot gọi con thân mật.</p>
+    <button class="btn btn-white btn-block" type="submit">{{ icon('check') }}Lưu hồ sơ</button>
+  </form>
+
+  <section class="card s8" id="nhat-ky">
+    <div class="card-head"><h2 class="card-title"><span class="tile-ic grape">{{ icon('history') }}</span>Nhật ký thay đổi</h2><span class="tag">{{ icon('eye') }}Con cũng xem được</span></div>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Lúc</th><th>Ai</th><th>Từ IP</th><th>Thay đổi</th></tr></thead>
+        <tbody>
+          {% for item in entries %}
+          <tr><td class="nowrap">{{ item.e.ts|hhmm }}</td><td><span class="who-badge">{{ item.who }}</span></td>
+            <td class="nowrap faint">{{ item.e.ip or '—' }}</td><td>{% for l in item.lines %}<div>{{ l }}</div>{% endfor %}</td></tr>
+          {% else %}<tr><td colspan="4" class="muted">Chưa có thay đổi nào.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if alerts %}
+    <h3>{{ icon('triangle-alert') }} Cảnh báo toàn vẹn</h3>
+    <ul class="req-list">{% for a in alerts %}<li><span>{{ a.kind }} <span class="faint small">{{ a.detail_json }}</span></span><span class="small">{{ a.ts|when }}</span></li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+
+  <section class="card danger s12" id="xoa-du-lieu">
+    <div class="card-head"><h2 class="card-title"><span class="tile-ic coral">{{ icon('trash-2') }}</span>Xóa dữ liệu</h2></div>
+    <p>Xóa toàn bộ sự kiện, thống kê và yêu cầu của {{ child.nickname }} trên server <b>và</b> gửi lệnh xóa bộ đệm trên máy của con. Không hoàn tác được.</p>
+    <form class="grid2" hx-post="/children/{{ child.id }}/purge" hx-target="#purge-result" hx-confirm="Xóa vĩnh viễn toàn bộ dữ liệu hoạt động của {{ child.nickname }}?">
+      <div class="field"><label for="cf">Gõ đúng tên gọi “{{ child.nickname }}” để xác nhận</label><input id="cf" name="confirm" type="text" autocomplete="off"></div>
+      <div class="field" style="align-self:end"><button class="btn btn-coral btn-block" type="submit">{{ icon('trash-2') }}Xóa toàn bộ dữ liệu của con tôi</button></div>
+    </form>
+    <div id="purge-result" aria-live="polite"></div>
+  </section>
+</div>
 {% endblock %}

@@ -1,27 +1,31 @@
-<!doctype html>
+{% from "_icons.html" import icon %}<!doctype html>
 <html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
-  <title>Đăng ký · OGK</title>
+  <meta name="color-scheme" content="light"><meta name="theme-color" content="#EEF2FF">
+  <title>Đăng ký · OpenGuard Kids</title>
+  <link rel="icon" href="/static/mascots/khien_happy.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/css/ogk.css">
 </head>
-<body>
+<body class="parent">
 <div class="auth">
-  <div class="hero" aria-hidden="true"><img src="/static/mascots/sao_celebrate.svg" alt=""></div>
-  <div class="card stack">
-    <h1>Tạo tài khoản gia đình</h1>
-    {% if error %}<div class="toast warn" role="alert">{{ error }}</div>{% endif %}
-    <form method="post" action="/auth/register">
+  <div class="logo">
+    <div class="hero" aria-hidden="true"><img src="/static/mascots/sao_celebrate.svg" alt=""></div>
+    <b>OpenGuard <span>Kids</span></b>
+  </div>
+  <div class="card">
+    <h1 style="font-size:1.6rem">Tạo tài khoản gia đình</h1>
+    {% if error %}<div class="toast warn" role="alert">{{ icon('triangle-alert') }}<span>{{ error }}</span></div>{% endif %}
+    <form method="post" action="/auth/register" style="margin-top:16px">
       <div class="field"><label for="email">Email</label>
         <input id="email" name="email" type="email" required value="{{ email }}"></div>
       <div class="field"><label for="password">Mật khẩu (ít nhất 10 ký tự)</label>
         <input id="password" name="password" type="password" required minlength="10" autocomplete="new-password"></div>
       <div class="field"><label for="call_name">Con gọi bạn là gì?</label>
         <input id="call_name" name="call_name" type="text" maxlength="20" placeholder="Ví dụ: Mẹ, Ba, Bà Nội"></div>
-      <button class="btn" type="submit" style="width:100%">Tạo tài khoản</button>
+      <button class="btn btn-lg btn-block" type="submit">{{ icon('sparkles') }}Tạo tài khoản</button>
     </form>
-    <p class="small muted">Đã có tài khoản? <a href="/auth/login">Đăng nhập</a></p>
+    <p class="small muted center" style="margin:16px 0 0">Đã có tài khoản? <a href="/auth/login">Đăng nhập</a></p>
   </div>
 </div>
 </body>

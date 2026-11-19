@@ -1,25 +1,41 @@
-{% for r in requests %}
-<form class="card soft req" hx-target="#requests" hx-swap="innerHTML">
-  <div class="row" style="justify-content:space-between">
-    <strong>{{ r.child }} xin thêm {{ r.minutes }} phút</strong>
-    <span class="small muted">{{ r.created_at|when }}</span>
+{# Yêu cầu xin thêm giờ — nổi bật bằng viền sáng chuyển màu. Tự làm mới mỗi 5 giây (hx-preserve giữ phần
+   "đổi số phút / lời nhắn" đang mở). Duyệt => server tạo lệnh add_time và đẩy qua WebSocket. #}
+{% from "_icons.html" import icon %}
+{% if requests %}
+<div class="glow">
+<section class="card pad-lg" aria-label="Yêu cầu của các con">
+  <div class="card-head">
+    <h2 class="card-title"><span class="tile-ic coral">{{ icon('hand') }}</span>Yêu cầu của các con <span class="count">{{ requests|length }}</span></h2>
+    <span class="h-note">Tự cập nhật mỗi 5 giây</span>
   </div>
-  {% if r.reason %}<div>💬 “{{ r.reason }}”</div>{% endif %}
-  <label for="note-{{ r.id }}" class="small">Lời nhắn cho con (không bắt buộc)</label>
-  {# hx-preserve: ô đang gõ không bị xóa khi danh sách tự làm mới mỗi 5 giây #}
-  <textarea id="note-{{ r.id }}" name="note" maxlength="200" rows="2" hx-preserve="true"></textarea>
-  <div class="chips">
-    {% for n in notes %}<button type="button" class="chip" data-fill="note-{{ r.id }}">{{ n }}</button>{% endfor %}
-  </div>
-  <div class="row">
-    <label class="sr-only" for="min-{{ r.id }}">Số phút</label>
-    <select id="min-{{ r.id }}" name="minutes" style="width:auto" hx-preserve="true">
-      {% for m in (15, 30, 60) %}<option value="{{ m }}" {% if m == r.minutes %}selected{% endif %}>{{ m }} phút</option>{% endfor %}
-    </select>
-    <button class="btn mint" hx-post="/requests/{{ r.id }}/approve">✓ Đồng ý</button>
-    <button class="btn ghost" hx-post="/requests/{{ r.id }}/deny">Để lần sau</button>
-  </div>
-</form>
+  {% for r in requests %}
+  <form class="req" hx-target="#requests" hx-swap="innerHTML">
+    <div class="av avatar {{ r.avatar }}"><img src="/static/mascots/{{ r.avatar }}_encourage.svg" alt=""></div>
+    <div class="what">{{ r.child }} xin thêm <b>{{ r.minutes }} phút</b><span class="when">{{ r.created_at|hhmm }}</span></div>
+    {% if r.reason %}<div class="bubble">“{{ r.reason }}”</div>{% endif %}
+    <div>
+      <div class="row">
+        <button class="btn btn-mint" hx-post="/requests/{{ r.id }}/approve">{{ icon('check') }}Đồng ý +{{ r.minutes }}p</button>
+        <button class="btn btn-white" hx-post="/requests/{{ r.id }}/deny">{{ icon('coffee') }}Nhắc bé nghỉ ngơi</button>
+      </div>
+      <details id="more-{{ r.id }}" hx-preserve="true">
+        <summary>Đổi số phút hoặc gửi lời nhắn riêng</summary>
+        <div class="grid2" style="margin-top:10px">
+          <div class="field"><label for="min-{{ r.id }}">Cho thêm</label>
+            <select id="min-{{ r.id }}" name="minutes">{% for m in (15, 30, 60) %}<option value="{{ m }}" {% if m == r.minutes %}selected{% endif %}>{{ m }} phút</option>{% endfor %}</select></div>
+          <div class="field"><label for="note-{{ r.id }}">Lời nhắn cho con</label>
+            <input id="note-{{ r.id }}" name="note" type="text" maxlength="200" placeholder="Để trống: dùng lời nhắn mặc định"></div>
+        </div>
+        <div class="chips">{% for n in notes %}<button type="button" class="chip" data-fill="note-{{ r.id }}">{{ n }}</button>{% endfor %}</div>
+      </details>
+    </div>
+  </form>
+  {% endfor %}
+</section>
+</div>
 {% else %}
-<div class="empty small"><img src="/static/mascots/sao_sleepy.svg" alt="">Hiện chưa có yêu cầu nào.</div>
-{% endfor %}
+<section class="card" aria-label="Yêu cầu của các con" style="margin-bottom:18px">
+  <div class="empty-state"><img src="/static/mascots/sao_sleepy.svg" alt="">
+    <div><h2 style="margin:0 0 2px">Chưa có yêu cầu nào</h2><span class="small">Khi con bấm “Xin thêm giờ”, yêu cầu sẽ hiện ở đây trong vài giây.</span></div></div>
+</section>
+{% endif %}

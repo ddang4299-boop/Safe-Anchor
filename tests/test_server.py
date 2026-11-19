@@ -275,3 +275,58 @@ def test_pages_render(client):
     kid = client.get(f"/kid/{token}")
     assert kid.status_code == 200 and "cũng thấy đúng những thông tin này" in kid.text
     assert client.get("/kid/khong-ton-tai").status_code == 404
+
+
+# ------------------------------------------------------------------ giao diện mới: form gộp, trạng thái, link trẻ
+def test_combined_policy_form_saves_everything_once(client):
+    _, cid = make_parent(client, "a@x.vn")
+    csrf = login(client, "a@x.vn")
+    dev = enroll(client, new_code(client, csrf, cid))
+    verifier = PolicyVerifier(dev["device_id"], dev["policy_alg"], dev["policy_public_key"])
+    v1 = verifier.verify(client.get("/api/policy", headers=bearer(dev["access_token"])).json(), 0)["version"]
+    form = {"weekday_min": "60", "weekend_min": "120", "budget_games": "30", "schedule": "1" * 336,
+            "blocked_categories": ["social", "games", "khong-hop-le"], "safesearch": "on",
+            "dns_block": "test-block.example\n<script>", "dns_allow": "khanacademy.org"}
+    r = client.post(f"/children/{cid}/policy", data=form, headers={"X-CSRF-Token": csrf, "HX-Request": "true"})
+    assert r.status_code == 200 and "Đã lưu" in r.text and 'id="policy-ver" hx-swap-oob="true"' in r.text
+    body = verifier.verify(client.get("/api/policy", headers=bearer(dev["access_token"])).json(), v1)
+    assert body["version"] == v1 + 1  # MỘT lần lưu = MỘT phiên bản
+    assert body["quota"] == {"weekday_min": 60, "weekend_min": 120} and body["category_budgets"] == {"games": 30}
+    assert body["dns"]["blocked_categories"] == ["social", "games"]  # giá trị lạ bị loại
+    assert body["dns"]["block"] == ["test-block.example"] and body["dns"]["safesearch"] and not body["dns"]["block_doh"]
+    bad = client.post(f"/children/{cid}/policy", data={**form, "schedule": "1" * 10},
+                      headers={"X-CSRF-Token": csrf, "HX-Request": "true"})
+    assert bad.status_code == 400 and "Lịch không hợp lệ" in bad.text
+    # phụ huynh khác không đụng được (IDOR => 404)
+    make_parent(client, "b@x.vn")
+    csrf_b = login(client, "b@x.vn")
+    assert client.post(f"/children/{cid}/policy", data=form, headers={"X-CSRF-Token": csrf_b}).status_code == 404
+
+
+def test_status_partial_shows_category_only_and_timed_break(client):
+    _, cid = make_parent(client, "a@x.vn")
+    csrf = login(client, "a@x.vn")
+    dev = enroll(client, new_code(client, csrf, cid))
+    client.post("/api/heartbeat", json={"policy_version": 1, "state": {
+        "phase": "active", "remaining_sec": 1800, "quota_min": 90, "running": ["education", "chrome.exe"]}},
+        headers=bearer(dev["access_token"]))
+    st = client.get("/partials/status").text
+    assert "Đang học tập" in st and "chrome.exe" not in st and 'hx-swap-oob="true"' in st
+    r = client.post(f"/devices/{dev['device_id']}/command", data={"cmd": "lock_now", "minutes": "120"},
+                    headers={"X-CSRF-Token": csrf, "HX-Request": "true"})
+    assert r.status_code == 200
+    hb = client.post("/api/heartbeat", json={"policy_version": 1}, headers=bearer(dev["access_token"])).json()
+    assert hb["commands"][0]["cmd"] == "lock_now" and hb["commands"][0]["payload"]["minutes"] == 120
+    assert "tạm nghỉ 120 phút" in client.get(f"/children/{cid}").text  # nhật ký ghi rõ thời hạn
+
+
+def test_new_kid_link_revokes_old_one_and_kid_page_has_no_block_count(client):
+    _, cid = make_parent(client, "a@x.vn")
+    csrf = login(client, "a@x.vn")
+    h = {"X-CSRF-Token": csrf, "HX-Request": "true"}
+    t1 = re.search(r"/kid/([\w-]+)", client.post(f"/children/{cid}/kid-link", headers=h).text).group(1)
+    t2 = re.search(r"/kid/([\w-]+)", client.post(f"/children/{cid}/kid-link", headers=h).text).group(1)
+    client.cookies.clear()
+    assert client.get(f"/kid/{t1}").status_code == 404  # link cũ hết hiệu lực
+    page = client.get(f"/kid/{t2}").text
+    assert "Hôm nay của con" in page and "Huy hiệu" in page and "Bị chặn" not in page

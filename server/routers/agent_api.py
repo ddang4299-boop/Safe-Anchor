@@ -183,8 +183,12 @@ def heartbeat(body: HeartbeatIn, request: Request, dev: Device = Depends(current
     dev.policy_version = body.policy_version
     dev.clock_skew = (body.client_time - now) if body.client_time else 0.0
     st = body.state or {}
-    dev.last_state_json = json.dumps({k: st.get(k) for k in ("phase", "lock_reason", "remaining_sec", "used_sec",
-                                                              "quota_min", "day", "stale")}, ensure_ascii=False)
+    known = ("education", "entertainment", "social", "games", "inappropriate", "uncategorized")
+    running = [c for c in (st.get("running") or []) if c in known][:6]  # chỉ NHÓM, không có tên ứng dụng/trang web
+    dev.last_state_json = json.dumps({**{k: st.get(k) for k in ("phase", "lock_reason", "remaining_sec", "used_sec",
+                                                                "quota_min", "day", "stale")},
+                                      "running": running, "lock_until": str(st.get("lock_until") or "")[:5]},
+                                     ensure_ascii=False)
     day = str(st.get("day") or "")[:10]
     if re.match(r"^\d{4}-\d{2}-\d{2}$", day):
         used = max(0, min(int(st.get("used_sec") or 0), 86400))

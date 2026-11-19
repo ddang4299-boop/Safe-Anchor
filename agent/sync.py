@@ -150,8 +150,11 @@ class SyncLoop:
         core, clock = self.rt.core, self.rt.clock
         st = core.status()
         body = {"policy_version": core.policy.get("version", 0), "client_time": time.time(),
-                "state": {**{k: st[k] for k in ("phase", "lock_reason", "remaining_sec", "used_sec", "quota_min", "day", "stale")},
-                          "by_category": {c: round(v) for c, v in core.used_by_cat.items()}},
+                "state": {**{k: st[k] for k in ("phase", "lock_reason", "remaining_sec", "used_sec", "quota_min", "day", "stale",
+                                                "lock_until")},
+                          "by_category": {c: round(v) for c, v in core.used_by_cat.items()},
+                          # chỉ gửi NHÓM đang chạy (học tập/trò chơi...) để dashboard hiện "Đang học tập", không gửi tên ứng dụng
+                          "running": sorted(core.running_categories)},
                 "integrity": self.rt.take_integrity()}
         t0 = clock._mono()
         r = await self.client.call("POST", "/api/heartbeat", json=body)

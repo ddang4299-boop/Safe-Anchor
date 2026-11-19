@@ -26,7 +26,7 @@ from collections import deque
 from dataclasses import dataclass, field
 
 from . import schedule as sch
-from .clock import TrustedClock
+from .clock import TrustedClock, to_local
 
 IDLE_LIMIT_SEC = 300  # rảnh > 5 phút thì không tính giờ
 MAX_TICK_DT = 5.0  # tick trễ quá 5 giây (máy ngủ/treo) thì chỉ tính tối đa 5 giây
@@ -70,6 +70,9 @@ class AgentCore:
         self.self_ack = False
         self.parent_lock = False
         self.parent_lock_by = ""
+        # Khóa CÓ HẠN ("Tạm nghỉ 2h"): mốc hết hạn theo epoch TIN CẬY (clock.now()), không theo giờ máy =>
+        # lùi đồng hồ không kéo dài/rút ngắn được; lưu trong snapshot nên khởi động lại máy vẫn giữ.
+        self.parent_lock_until: float | None = None
         self.override_until: float | None = None
         self.session_locked = False
         self.idle_sec = 0.0
@@ -195,6 +198,14 @@ class AgentCore:
             reason = "schedule" if rem_sched <= rem_quota else "quota"
         self.remaining_sec = max(0.0, remaining)
 
+        # 6b) Hết hạn "tạm nghỉ" do phụ huynh đặt => tự mở, KHÔNG cần mạng (đã ghi sẵn mốc trong lệnh).
+        if self.parent_lock and self.parent_lock_until is not None and self.clock.now() >= self.parent_lock_until:
+            self.parent_lock, self.parent_lock_until = False, None
+            if self.phase == "locked" and self.lock_reason == "parent":
+                self.phase, self.lock_reason = "active", None  # để bước 7 xét lại: còn giờ => dùng tiếp, hết => ân hạn
+                acts.append(Action("unlock_session", {}))
+                acts.append(self._notify("break_over", by=self.parent_lock_by))
+
         # 7) Chuyển trạng thái.
         if self.parent_lock:
             if self.phase != "locked" or self.lock_reason != "parent":
@@ -251,8 +262,11 @@ class AgentCore:
             if ctype == "lock_now":
                 self.parent_lock = True
                 self.parent_lock_by = payload.get("by", "")
+                minutes = int(payload.get("minutes") or 0)  # có minutes = tạm nghỉ có hạn (vd 120 phút)
+                self.parent_lock_until = (self.clock.now() + min(minutes, 24 * 60) * 60) if minutes > 0 else None
             elif ctype == "unlock":
                 self.parent_lock = False
+                self.parent_lock_until = None
                 minutes = int(payload.get("minutes", 30))
                 if minutes > 0:
                     self.override_until = mono + minutes * 60
@@ -309,6 +323,8 @@ class AgentCore:
                 "now_slot": local.hour * 2 + local.minute // 30,
                 "segments": sch.day_segments(pol["schedule"], local),
                 "next_allowed": nxt.strftime("%H:%M") if nxt and nxt.date() == local.date() else None,
+                "lock_until": to_local(self.parent_lock_until, self.clock.tz_offset_min).strftime("%H:%M")
+                if self.parent_lock and self.parent_lock_until else None,
                 "budgets": budgets,
                 "exhausted": sorted(self.exhausted),
                 "profile": self.policy.get("profile", DEFAULT_POLICY["profile"]),
@@ -324,6 +340,7 @@ class AgentCore:
             return {"day": self.day, "used_sec": self.used_sec, "used_by_cat": self.used_by_cat,
                     "bonus_min": self.bonus_min, "warned": sorted(self.warned),
                     "parent_lock": self.parent_lock, "parent_lock_by": self.parent_lock_by,
+                    "parent_lock_until": self.parent_lock_until,
                     "last_trusted_epoch": self.clock.now(), "last_server_contact": self.last_server_contact,
                     "integrity_flag_day": self.integrity_flag_day}
 
@@ -337,6 +354,7 @@ class AgentCore:
             self.last_server_contact = snap.get("last_server_contact")
             self.parent_lock = bool(snap.get("parent_lock"))
             self.parent_lock_by = snap.get("parent_lock_by", "")
+            self.parent_lock_until = snap.get("parent_lock_until")
             self.integrity_flag_day = snap.get("integrity_flag_day")
             today = self.clock.trusted_day()
             if snap.get("day") and snap["day"] >= today:

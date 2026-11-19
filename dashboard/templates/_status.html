@@ -1,0 +1,3 @@
+{# Trả về cho /partials/status: mỗi thẻ thiết bị kèm hx-swap-oob => HTMX thay đúng thẻ có cùng id. #}
+{% from "_macros.html" import device_tile %}
+{% for d in devices %}{{ device_tile(d, oob=true) }}{% endfor %}

@@ -1,44 +1,49 @@
-<!doctype html>
+{% from "_icons.html" import icon %}<!doctype html>
 <html lang="vi">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="color-scheme" content="light dark">
-  <title>{% block title %}OGK · Bảng gia đình{% endblock %}</title>
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#EEF2FF">
+  <title>{% block title %}OpenGuard Kids · Phụ huynh{% endblock %}</title>
   <link rel="icon" href="/static/mascots/khien_happy.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/css/ogk.css">
   <script src="/static/js/htmx.min.js" defer></script>
+  <script src="/static/js/chart.umd.min.js" defer></script>
   <script src="/static/js/app.js" defer></script>
   {% block head %}{% endblock %}
 </head>
 {# CSRF token đi kèm MỌI yêu cầu HTMX qua header X-CSRF-Token #}
-<body hx-headers='{"X-CSRF-Token": "{{ web.csrf }}"}'>
-<div class="app">
-  <header class="topbar">
-    <a class="brand" href="/"><img src="/static/mascots/khien_happy.svg" alt="">OpenGuard Kids</a>
-    <span class="spacer"></span>
+<body class="parent" hx-headers='{"X-CSRF-Token": "{{ web.csrf }}"}'>
+<header class="topbar">
+  <div class="topbar-in glass">
+    <a class="brand" href="/"><img src="/static/mascots/khien_happy.svg" alt="">OpenGuard&nbsp;<b>Kids</b></a>
+    <nav class="navlinks" aria-label="Điều hướng chính">
+      <a href="/" {% if page == 'overview' %}aria-current="page"{% endif %}>{{ icon('house') }}Tổng quan</a>
+      <a href="/family" {% if page in ('family', 'child') %}aria-current="page"{% endif %}>{{ icon('users') }}Gia đình</a>
+    </nav>
     {% if web.guardians|length > 1 %}
     <form class="acting" method="post" action="/auth/as-guardian">
       <input type="hidden" name="csrf_token" value="{{ web.csrf }}">
       <label class="sr-only" for="actas">Đang thao tác với tư cách</label>
       <select id="actas" name="guardian_id" data-autosubmit>
-        {% for g in web.guardians %}
-        <option value="{{ g.id }}" {% if g.id == web.session.guardian_id %}selected{% endif %}>👤 {{ g.relation|capitalize }}</option>
-        {% endfor %}
+        {% for g in web.guardians %}<option value="{{ g.id }}" {% if g.id == web.session.guardian_id %}selected{% endif %}>{{ g.relation|capitalize }}</option>{% endfor %}
       </select>
     </form>
     {% endif %}
-  </header>
-  <nav class="nav" aria-label="Điều hướng chính">
-    <a href="/" {% if page == 'overview' %}aria-current="page"{% endif %}><span class="ico" aria-hidden="true">🏠</span>Tổng quan
-      <span hx-get="/partials/badge" hx-trigger="load, every 10s" hx-swap="innerHTML"></span></a>
-    <a href="/family" {% if page in ('family', 'child') %}aria-current="page"{% endif %}><span class="ico" aria-hidden="true">👨‍👩‍👧</span>Gia đình</a>
-    <form method="post" action="/auth/logout" style="display:contents">
+    <span class="who" title="{{ web.parent.email }}">{{ web.parent.email }}</span>
+    <form method="post" action="/auth/logout" class="inline">
       <input type="hidden" name="csrf_token" value="{{ web.csrf }}">
-      <button type="submit"><span class="ico" aria-hidden="true">👋</span>Đăng xuất</button>
+      <button class="icon-btn" type="submit" title="Đăng xuất" aria-label="Đăng xuất">{{ icon('log-out') }}</button>
     </form>
-  </nav>
-  <main id="main">{% block content %}{% endblock %}</main>
-</div>
+  </div>
+</header>
+<main id="main" class="wrap">{% block content %}{% endblock %}</main>
+<footer class="footnote">Công cụ đồng hành, không phải phần mềm theo dõi lén. Con của bạn luôn thấy biểu tượng OGK và được xem dữ liệu của mình cùng nhật ký thay đổi.</footer>
+<nav class="tabbar glass" aria-label="Điều hướng nhanh">
+  <a href="/" {% if page == 'overview' %}aria-current="page"{% endif %}>{{ icon('house') }}Tổng quan</a>
+  <a href="/family" {% if page in ('family', 'child') %}aria-current="page"{% endif %}>{{ icon('users') }}Gia đình</a>
+  <a href="/children/new" {% if page == 'new' %}aria-current="page"{% endif %}>{{ icon('plus') }}Thêm con</a>
+</nav>
 </body>
 </html>

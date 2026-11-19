@@ -1,40 +1,111 @@
-<!doctype html>
+{% from "_icons.html" import icon %}<!doctype html>
 <html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#EEF2FF">
   <meta name="robots" content="noindex">
-  <title>Hôm nay {{ profile.nickname }} đã dùng gì</title>
+  <title>Hôm nay {{ profile.nickname }} đã dùng gì · OpenGuard Kids</title>
   <link rel="icon" href="/static/mascots/tictac_happy.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/css/ogk.css">
 </head>
-<body style="background:var(--bg-soft)">
-<div class="kid-page stack">
-  <div class="mascot-say">
-    <img src="/static/mascots/tictac_happy.svg" alt="Tíc-Tắc">
-    <div class="speech">
-      <strong>Chào {{ profile.nickname }}! 👋</strong><br>
-      Đây là những gì {{ profile.self_pronoun }} đã dùng mấy ngày qua.
-      <strong>{{ profile.guardian_call }} cũng thấy đúng những thông tin này, không hơn.</strong>
-    </div>
+{# Trang CHỈ ĐỌC cho trẻ, không tải JavaScript. Mascot chuyển động bằng CSS nằm sẵn trong tệp SVG. #}
+<body class="kid">
+{% set name = profile.nickname %}{% set me = profile.self_pronoun %}{% set avatar = profile.avatar_key or 'tictac' %}
+<header class="k-top">
+  <div class="k-top-in glass">
+    <span class="k-logo"><img src="/static/mascots/khien_happy.svg" alt="">OpenGuard Kids</span>
+    <nav class="k-nav" aria-label="Các mục">
+      <a href="#hom-nay"><span aria-hidden="true">⏰</span>Hôm nay</a>
+      <a href="#bao-cao"><span aria-hidden="true">🧩</span>Khám phá</a>
+      <a href="#ai-doi-gi"><span aria-hidden="true">📜</span>Ai đổi gì</a>
+      <a href="#bi-mat"><span aria-hidden="true">🔒</span>Bí mật của {{ me }}</a>
+    </nav>
   </div>
-  {% set name = profile.nickname %}
+</header>
+
+<section class="k-hero">
+  <div class="k-hello">
+    <p class="hi">Chào bạn nhỏ</p>
+    <h1>{{ name }}!</h1>
+    <div class="k-tag">Hôm nay {{ kv.used }} phút</div>
+    <p class="k-lead">Đây là những gì máy tính ghi lại. <b>{{ profile.guardian_call }} cũng thấy đúng những thông tin này, không hơn.</b>
+      Tíc-Tắc, Khiên Xanh và Sao Nhỏ luôn ở đây để {{ me }} biết rõ mọi chuyện.</p>
+    <a class="k-cta" href="#hom-nay">Xem hôm nay của {{ me }} <span aria-hidden="true">↓</span></a>
+  </div>
+  <div class="k-stage" aria-hidden="true">
+    <div class="blob"></div>
+    <img class="shapes" src="/static/img/deco_shapes.svg" alt="">
+    <img class="m m3" src="/static/mascots/sao_celebrate.svg" alt="">
+    <img class="m m1" src="/static/mascots/{{ avatar }}_happy.svg" alt="">
+    <img class="m m2" src="/static/mascots/khien_happy.svg" alt="">
+    <img class="ruler" src="/static/img/deco_ruler.svg" alt="">
+  </div>
+</section>
+
+<main class="k-main">
+  {# Bento "Hôm nay em đã dùng gì" #}
+  <div class="k-bento" id="hom-nay">
+    <section class="card s6 tint-indigo">
+      <h2><span class="k-ic">⏰</span>Hôm nay của {{ me }}</h2>
+      <div class="k-today">
+        <div class="ring" style="--p:{{ kv.pct }}" role="img" aria-label="Đã dùng {{ kv.used }} trên {{ kv.quota_today }} phút">
+          <div><b>{{ kv.used }}</b><span>/ {{ kv.quota_today }} phút</span></div>
+        </div>
+        <div class="txt">
+          <p style="margin:0 0 6px;font-weight:800">{% if kv.left > 0 %}Hôm nay {{ me }} còn khoảng <b>{{ kv.left }} phút</b> để dùng máy.{% else %}Hôm nay {{ me }} dùng hết giờ rồi, mai mình chơi tiếp nhé!{% endif %}</p>
+          <p class="k-sub small" style="margin:0">Giờ dùng máy: ngày thường {{ kv.weekday_min }} phút, cuối tuần {{ kv.weekend_min }} phút.</p>
+          <div class="k-say"><img src="/static/mascots/tictac_{{ 'encourage' if kv.left > 10 else 'remind' }}.svg" alt="">
+            {% if kv.left > 10 %}Nhớ cứ 30 phút nghỉ mắt một chút nha!{% else %}Sắp hết giờ rồi, {{ me }} lưu bài trước nhé!{% endif %}</div>
+        </div>
+      </div>
+    </section>
+    <section class="card s3 tint-mint">
+      <h2><span class="k-ic">📚</span>Học tập</h2>
+      <span class="k-big">{{ kv.study }}<small> phút</small></span>
+      <div class="rbar mint"><span style="width:{{ [100 * kv.study / (kv.used or 1), 100]|min|round|int }}%"></span></div>
+      <p class="k-sub small" style="margin-top:8px">Word, Scratch, trang học tập…</p>
+    </section>
+    <section class="card s3 tint-sun">
+      <h2><span class="k-ic">🎮</span>Giải trí</h2>
+      <span class="k-big">{{ kv.fun }}<small> phút</small></span>
+      <div class="rbar sun"><span style="width:{{ [100 * kv.fun / (kv.used or 1), 100]|min|round|int }}%"></span></div>
+      <p class="k-sub small" style="margin-top:8px">Trò chơi, phim, nhạc…</p>
+    </section>
+    <section class="card s12 tint-grape">
+      <div class="k-badge">
+        <div class="medal{{ '' if kv.on_time else ' off' }}">{{ icon('award') }}</div>
+        <div>
+          <h2 style="margin:0 0 4px">{% if kv.on_time %}Huy hiệu “Ngôi Sao Đúng Giờ”!{% else %}Huy hiệu đang chờ {{ me }}{% endif %}</h2>
+          <p style="margin:0;font-weight:700">{% if kv.on_time %}{{ me|capitalize }} dùng máy trong giờ cho phép {{ kv.streak }} ngày liền rồi. Giỏi quá!{% else %}Hôm nay hơi quá giờ một chút. Ngày mai {{ me }} thử lại nhé — Sao Nhỏ tin {{ me }} làm được!{% endif %}</p>
+          <div class="streak" aria-label="7 ngày gần đây">{% for d in kv.days %}<i class="{{ 'ok' if d.ok }}" title="{{ d.label }} {{ d.date }}: {{ d.minutes }} phút">{{ '⭐' if d.ok else '·' }}</i>{% endfor %}</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
   {% include "_report.html" %}
-  <section class="card stack">
-    <div class="mascot-say">
-      <img src="/static/mascots/khien_happy.svg" alt="Khiên Xanh">
-      <div><h2>📜 Ai đã đổi gì</h2><p class="small muted">Mỗi khi ba mẹ đổi cài đặt, tớ ghi lại ở đây để {{ name }} biết.</p></div>
-    </div>
-    {% for a in audit %}
-    <div style="border-bottom:1px solid var(--line);padding:8px 0">{% for l in a.lines %}<div>{{ l }}</div>{% endfor %}<div class="small muted">{{ a.when }}</div></div>
-    {% else %}<p class="muted">Chưa có thay đổi nào.</p>{% endfor %}
-  </section>
-  <section class="card soft stack">
-    <h2>🔎 OGK biết gì về {{ name }}?</h2>
-    <p>Tớ chỉ biết <strong>tên ứng dụng</strong> và <strong>tên trang web</strong> {{ name }} dùng, cùng thời gian dùng máy.
-      Tớ <strong>không</strong> đọc tin nhắn, <strong>không</strong> chụp màn hình, <strong>không</strong> nghe micro, <strong>không</strong> bật camera.
-      Dữ liệu tự xóa sau 90 ngày.</p>
-  </section>
-</div>
+
+  <div class="k-bento">
+    <section class="card s7" id="ai-doi-gi">
+      <h2><span class="k-ic">📜</span>Ai đã thay đổi cài đặt của {{ me }}?</h2>
+      <ul class="feed">
+        {% for a in audit %}<li><span class="when">{{ a.when }}</span> — {{ a.lines|join('; ') }}</li>
+        {% else %}<li class="muted">Chưa có thay đổi nào.</li>{% endfor %}
+      </ul>
+    </section>
+    <section class="card s5 tint-sky" id="bi-mat">
+      <h2><span class="k-ic">🔒</span>OGK biết gì về {{ name }}?</h2>
+      <div class="k-know">
+        <div class="yes"><h3>{{ icon('circle-check') }}Tớ biết</h3>
+          <ul><li>{{ icon('check') }}Tên ứng dụng {{ me }} mở</li><li>{{ icon('check') }}Tên trang web (không có nội dung)</li><li>{{ icon('check') }}Thời gian dùng máy</li></ul></div>
+        <div class="no"><h3>{{ icon('x') }}Tớ KHÔNG</h3>
+          <ul><li>{{ icon('x') }}Đọc tin nhắn</li><li>{{ icon('x') }}Chụp màn hình</li><li>{{ icon('x') }}Nghe micro, bật camera</li></ul></div>
+      </div>
+      <p class="small k-sub" style="margin-top:14px">Dữ liệu tự xóa sau 90 ngày. {{ me|capitalize }} luôn thấy biểu tượng OGK trên máy.</p>
+    </section>
+  </div>
+</main>
+<footer class="k-foot">Công cụ đồng hành, không phải phần mềm theo dõi lén. {{ profile.guardian_call }} và {{ me }} cùng thấy một bảng thông tin.</footer>
 </body>
 </html>

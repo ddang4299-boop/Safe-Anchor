@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160" role="img" aria-label="Sao Nhỏ"><title>Sao Nhỏ</title><style>
+@keyframes f{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes s{0%,100%{transform:scaleX(1);opacity:.18}50%{transform:scaleX(.86);opacity:.1}}
+@keyframes bl{0%,90%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
+@keyframes wv{0%,100%{transform:rotate(0)}50%{transform:rotate(-26deg)}}
+@keyframes sp{to{transform:rotate(360deg)}}
+@keyframes ck{0%,100%{opacity:.45}50%{opacity:.8}}
+@keyframes zz{0%{opacity:0;transform:translate(0,6px)}25%{opacity:1}100%{opacity:0;transform:translate(9px,-16px)}}
+@keyframes pp{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.18) rotate(8deg)}}
+.b{animation:f 3.4s ease-in-out infinite}
+.sh{transform-box:fill-box;transform-origin:center;animation:s 3.4s ease-in-out infinite}
+.e{transform-box:fill-box;transform-origin:center;animation:bl 5.2s infinite}
+.w{transform-box:fill-box;animation:wv 1.8s ease-in-out infinite}
+.hm{transform-origin:80px 90px;animation:sp 12s linear infinite}
+.hh{transform-origin:80px 90px;animation:sp 144s linear infinite}
+.ck{animation:ck 3.4s ease-in-out infinite}
+.z{animation:zz 2.8s ease-in-out infinite}.z2{animation-delay:1.4s}
+.pp{transform-box:fill-box;transform-origin:center;animation:pp 1.7s ease-in-out infinite}
+.d2{animation-delay:.5s}.d3{animation-delay:1s}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style><defs><linearGradient id="snblinkb" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="#A78BFA"/><stop offset="1" stop-color="#8B5CF6"/></linearGradient><linearGradient id="snblinkm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34D399"/><stop offset="1" stop-color="#10B981"/></linearGradient></defs><ellipse class="sh" cx="80" cy="152" rx="40" ry="6" fill="#4338CA" opacity=".18"/><g class="b"><path d="M80.0 30.0 L97.6 65.7 L137.1 71.5 L108.5 99.3 L115.3 138.5 L80.0 120.0 L44.7 138.5 L51.5 99.3 L22.9 71.5 L62.4 65.7 Z" fill="url(#snblinkb)" stroke="url(#snblinkb)" stroke-width="14" stroke-linejoin="round"/><path d="M56 64 L68 44" stroke="#FFFFFF" stroke-opacity=".5" stroke-width="6" stroke-linecap="round"/><path class="pp" d="M80 27 Q81.26 32.74 87 34 Q81.26 35.26 80 41 Q78.74 35.26 73 34 Q78.74 32.74 80 27 Z" fill="#6EE7B7"/><g class="ck"><ellipse cx="57" cy="104" rx="8.5" ry="5.2" fill="#FFB3D9" opacity=".6"/><ellipse cx="103" cy="104" rx="8.5" ry="5.2" fill="#FFB3D9" opacity=".6"/></g><path d="M57.075 88 Q66 96.4 74.925 88" fill="none" stroke="#2A2140" stroke-width="3.4" stroke-linecap="round"/><path d="M85.075 88 Q94 96.4 102.925 88" fill="none" stroke="#2A2140" stroke-width="3.4" stroke-linecap="round"/><path d="M71 106 Q80 116 89 106" fill="none" stroke="#2A2140" stroke-width="3.6" stroke-linecap="round"/></g></svg>

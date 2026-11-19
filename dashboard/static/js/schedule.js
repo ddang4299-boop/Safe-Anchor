@@ -16,7 +16,7 @@
     grid.appendChild(document.createElement("div"));
     for (var h = 0; h < 24; h++) {
       var hd = document.createElement("div");
-      hd.className = "h"; hd.textContent = h % 3 === 0 ? h + "h" : "";
+      hd.className = "h"; hd.textContent = String(h);
       grid.appendChild(hd);
     }
     var cells = [];
@@ -27,7 +27,8 @@
       for (var s = 0; s < 48; s++) {
         var idx = d * 48 + s;
         var c = document.createElement("div");
-        c.className = "c" + (bits[idx] === "1" ? " on" : "");
+        // "hr": ô thứ 2 của mỗi giờ => CSS chừa khe nhỏ để mắt nhóm 2 ô thành 1 giờ
+        c.className = "c" + (s % 2 === 1 ? " hr" : "") + (bits[idx] === "1" ? " on" : "");
         c.setAttribute("data-i", idx);
         c.setAttribute("role", "gridcell");
         c.setAttribute("tabindex", idx === 0 ? "0" : "-1");

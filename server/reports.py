@@ -13,9 +13,14 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from agent.app_names import app_display
+
 from .models import DailyUsage, Event, UnlockRequest
 
 WEEKDAY_VI = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
+
+# Tên hiển thị thân thiện ("winword.exe" -> "Microsoft Word"): dùng chung với Tray, xem agent/app_names.py
+
 
 
 def _tz(offset_min: int):
@@ -77,14 +82,17 @@ def child_report(db: Session, child_id: int, tz_offset_min: int = 420, now: floa
     max_week = max([w["minutes"] for w in weekly] + [1])
     return {
         "today_minutes": daily[-1]["minutes"],
+        "week_minutes": sum(d["minutes"] for d in daily),
         "daily": daily, "max_day": max_day,
         "weekly": weekly, "max_week": max_week,
         "cats_today": {c: round(s / 60) for c, s in sorted(cats_today.items(), key=lambda x: -x[1])},
         "cats_week": {c: round(s / 60) for c, s in sorted(cats_week.items(), key=lambda x: -x[1])},
-        "top_apps": [{"name": s, "minutes": round((sec or 0) / 60), "count": n} for s, sec, n in top_apps],
+        "top_apps": [{"name": s, "display": app_display(s), "minutes": round((sec or 0) / 60), "count": n}
+                     for s, sec, n in top_apps],
         "top_domains": [{"name": s, "count": n} for s, n in top_domains],
         "blocked_total": sum(n for _, _, n in blocked),
-        "blocked": [{"type": t, "name": s, "count": n} for t, s, n in blocked[:10]],
+        "blocked": [{"type": t, "name": s, "count": n,
+                     "display": app_display(s) if t == "blocked_app" else s} for t, s, n in blocked[:10]],
         "requests": [{"id": r.id, "minutes": r.minutes, "status": r.status, "created_at": r.created_at,
                       "reason": dec(r.reason_enc, "unlock_requests.reason"),
                       "note": dec(r.note_enc, "unlock_requests.note")} for r in reqs],

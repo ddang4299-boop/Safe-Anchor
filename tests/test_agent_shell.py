@@ -143,3 +143,23 @@ def test_block_rate_on_test_domains():
     assert len(should_block) == 50 and len(edu) == 20
     assert blocked / len(should_block) >= 0.95
     assert false_pos == []
+
+
+def test_tray_view_logic_for_new_ui():
+    # thanh thời gian đổi màu MƯỢT: Mint (>= 20 phút) -> Vàng nắng (10 phút) -> Cam ấm (0)
+    assert V.smooth_time_color(30 * 60) == V.MINT
+    assert V.smooth_time_color(10 * 60) == V.SUN
+    assert V.smooth_time_color(0) == V.ORANGE
+    assert V.smooth_time_color(15 * 60) not in (V.MINT, V.SUN, V.ORANGE)  # màu trung gian
+    # chip lý do xin giờ: đúng xưng hô, không vượt giới hạn 200 ký tự của IPC
+    rs = V.quick_reasons({"self_pronoun": "em"})
+    assert len(rs) == 3 and rs[0].startswith("Em") and all(len(r) <= 200 for r in rs)
+    # Bento "Hôm nay": học tập / giải trí (trò chơi + giải trí) / huy hiệu đúng giờ
+    t = V.today_tiles({"used_sec": 3600, "quota_min": 90, "phase": "active"},
+                      {"cats_today": {"education": 30, "games": 10, "entertainment": 5}})
+    assert (t["study"], t["fun"], t["on_time"]) == (30, 15, True)
+    assert not V.today_tiles({"used_sec": 100 * 60, "quota_min": 90}, None)["on_time"]
+    # "Tạm nghỉ 2h": màn chặn báo trước giờ mở lại; hết giờ nghỉ có lời báo dịu dàng
+    s = V.block_screen({"phase": "locked", "lock_reason": "parent", "lock_until": "16:30", "profile": {}})
+    assert "16:30" in s.what
+    assert V.toast_text({"kind": "break_over"}, {"nickname": "Bin", "guardian_call": "Mẹ"})

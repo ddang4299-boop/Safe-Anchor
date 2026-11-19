@@ -1,0 +1,81 @@
+{# Macro dùng chung cho dashboard phụ huynh và trang của trẻ: CÙNG markup + dữ liệu, khác "lớp da" CSS. #}
+{% from "_icons.html" import icon %}
+
+{# Biểu đồ cột thuần CSS (chiều cao = % so với giá trị lớn nhất). Là phương án dự phòng khi chưa có JS,
+   và là biểu đồ chính trên trang của trẻ (trang trẻ không tải JavaScript). #}
+{% macro bars(items, maxv, label_key='date', unit='') -%}
+<div class="bars" role="img" aria-label="Biểu đồ cột:{% for d in items %} {{ d[label_key] }} {{ d.minutes }} phút{{ ',' if not loop.last }}{% endfor %}">
+  {%- for d in items %}
+  {%- set pct = (100 * d.minutes / (maxv or 1))|round|int %}
+  <div class="bar{% if loop.last %} today{% endif %}" style="--h:{{ [pct, 100]|min }}%">
+    <span class="n">{% if unit == 'h' %}{{ (d.minutes / 60)|round(1) }}h{% else %}{{ d.minutes }}{% endif %}</span>
+    <span class="v"></span><span class="l">{{ d[label_key] }}</span>
+  </div>
+  {%- endfor %}
+</div>
+{%- endmacro %}
+
+{# Top ứng dụng / tên miền: tên + số + thanh tỉ lệ (--w). Trên trang trẻ CSS biến thành ô vuông/viên thuốc. #}
+{% macro toplist(items, limit=10, kind='app', empty='Chưa có dữ liệu.') -%}
+{%- set top = items[:limit] %}
+{%- set maxv = (top|map(attribute=('minutes' if kind == 'app' else 'count'))|max) if top else 1 %}
+<ul class="toplist {{ kind }}">
+  {%- for a in top %}
+  {%- set label = a.display if kind == 'app' else a.name %}
+  {%- set val = a.minutes if kind == 'app' else a.count %}
+  <li style="--w:{{ (100 * val / (maxv or 1))|round|int }}%"><span class="ini" aria-hidden="true">{{ label[:1]|upper }}</span><span class="nm">{{ label }}</span><b>{{ val }}</b></li>
+  {%- else %}
+  <li class="none">{{ empty }}</li>
+  {%- endfor %}
+</ul>
+{%- endmacro %}
+
+{# Biểu đồ Chart.js (cột bo tròn đầu). Dữ liệu nằm trong data-chart (JSON, không có script nội tuyến => hợp CSP);
+   app.js vẽ canvas rồi thêm lớp has-chart để ẩn phần dự phòng (caller) — tắt JS vẫn xem được. #}
+{% macro chart(kind, labels, values, unit='', palette='indigo', height=220, label='Biểu đồ', colors=none) -%}
+<figure class="chart" style="--ch:{{ height }}px" data-chart='{{ {"kind": kind, "labels": labels, "values": values, "unit": unit, "palette": palette, "colors": colors}|tojson }}'>
+  <canvas role="img" aria-label="{{ label }}"></canvas>
+  <div class="fallback">{{ caller() if caller else '' }}</div>
+</figure>
+{%- endmacro %}
+
+{% macro status_pill(d) -%}
+<span class="status {{ d.status }}"><span class="dot"></span>{{ d.label }}{% if d.activity %} · {{ d.activity }}{% endif %}</span>
+{%- endmacro %}
+
+{# Thẻ thiết bị: trạng thái thời gian thực + nút tác vụ nhanh. id="dev-..." để /partials/status thay
+   đúng thẻ này (hx-swap-oob) mỗi 10 giây; ô kết quả lệnh (#cmd-...) nằm NGOÀI thẻ nên không bị xóa. #}
+{% macro device_tile(d, full=false, oob=false) -%}
+<div class="device" id="dev-{{ d.id }}"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <div class="dev-head">
+    <span class="tile-ic blue">{{ icon('laptop') }}</span>
+    <span class="dev-name">{{ d.hostname }} <span class="mono">{{ d.short_id }}</span></span>
+    {{ status_pill(d) }}
+  </div>
+  <div class="dev-meta">
+    {%- if d.status == 'offline' %}Lần cuối thấy {{ d.last_seen|hhmm or 'chưa rõ' }} · lệnh gửi lúc này sẽ áp dụng khi máy kết nối lại
+    {%- elif d.status == 'revoked' %}Đã gỡ khỏi gia đình
+    {%- else %}Hoạt động {{ d.last_seen|hhmm }}{% if d.quota_min %} · còn <b>{{ d.remaining_min|mins }}</b> · đã dùng {{ d.used_min|mins }}{% endif %}{% endif %}
+  </div>
+  {%- if d.status in ('active', 'grace', 'locked') and d.quota_min %}
+  {%- set pct = (100 * d.remaining_min / d.quota_min)|round|int %}
+  <div class="timebar {% if d.remaining_min <= 1 %}out{% elif d.remaining_min <= 10 %}low{% endif %}" role="img" aria-label="Còn {{ d.remaining_min }} phút"><span style="width:{{ [[pct, 100]|min, 2]|max }}%"></span></div>
+  {%- endif %}
+  {%- if full %}<div class="dev-meta">Chính sách v{{ d.policy_version }}{% if d.skew|abs > 120 %} · giờ máy lệch {{ d.skew }} giây{% endif %}{% if d.stale %} · mất kết nối hơn 7 ngày{% endif %}</div>{% endif %}
+  {%- if not d.revoked %}
+  <div class="quick">
+    <button class="btn btn-coral btn-sm" hx-post="/devices/{{ d.id }}/command" hx-vals='{"cmd": "lock_now"}' hx-target="#cmd-{{ d.id }}" hx-confirm="Khóa máy của con ngay bây giờ?">{{ icon('lock') }}Khóa khẩn cấp</button>
+    <button class="btn btn-sun btn-sm" hx-post="/devices/{{ d.id }}/command" hx-vals='{"cmd": "lock_now", "minutes": "120"}' hx-target="#cmd-{{ d.id }}">{{ icon('coffee') }}Tạm nghỉ 2h</button>
+    <button class="btn btn-mint btn-sm" hx-post="/devices/{{ d.id }}/command" hx-vals='{"cmd": "add_time", "minutes": "15"}' hx-target="#cmd-{{ d.id }}">{{ icon('plus') }}15 phút</button>
+    <button class="btn btn-white btn-sm" hx-post="/devices/{{ d.id }}/command" hx-vals='{"cmd": "unlock", "minutes": "30"}' hx-target="#cmd-{{ d.id }}">{{ icon('lock-open') }}Mở khóa</button>
+    {%- if full %}
+    <button class="btn btn-ghost btn-sm" hx-post="/devices/{{ d.id }}/revoke" hx-target="#cmd-{{ d.id }}" hx-confirm="Gỡ máy này khỏi gia đình? Máy sẽ phải ghép lại.">{{ icon('trash-2') }}Gỡ máy</button>
+    {%- endif %}
+  </div>
+  {%- endif %}
+</div>
+{%- endmacro %}
+
+{% macro device_block(d, full=false) -%}
+<div>{{ device_tile(d, full) }}<div id="cmd-{{ d.id }}" aria-live="polite"></div></div>
+{%- endmacro %}

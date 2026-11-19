@@ -25,6 +25,7 @@ from .config import DASHBOARD_DIR
 from .context import AppContext, get_ctx
 from .db import get_db
 from .models import Guardian, Parent, WebSession
+from .reports import app_display
 from .security import csrf_token, random_token, sha256_hex, verify_csrf
 
 COOKIE = "ogk_session"
@@ -44,7 +45,13 @@ def _hhmm(ts, offset=420) -> str:
     return datetime.fromtimestamp(ts, timezone(timedelta(minutes=offset))).strftime("%H:%M %d/%m") if ts else ""
 
 
-templates.env.filters.update(mins=_mins, when=when_text, cat_vi=lambda c: CATEGORY_VI.get(c, c), hhmm=_hhmm)
+# Nhãn nhóm nội dung cho PHỤ HUYNH (trùng cách gọi trong tài liệu hướng dẫn, Hình 7);
+# trẻ dùng CATEGORY_VI (cat_vi) — lời nhẹ hơn, ví dụ "Chưa phù hợp lứa tuổi".
+CATEGORY_PARENT = {"education": "Giáo dục", "entertainment": "Giải trí", "social": "Mạng xã hội",
+                   "games": "Trò chơi", "inappropriate": "Không phù hợp lứa tuổi", "uncategorized": "Chưa phân loại"}
+
+templates.env.filters.update(mins=_mins, when=when_text, cat_vi=lambda c: CATEGORY_VI.get(c, c), hhmm=_hhmm,
+                             cat_label=lambda c: CATEGORY_PARENT.get(c, c), app_name=app_display)
 
 
 class LoginRequired(Exception):

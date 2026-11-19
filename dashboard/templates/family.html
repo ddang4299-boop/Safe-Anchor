@@ -1,26 +1,33 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block content %}
-<h1>👨‍👩‍👧 Gia đình</h1>
-<div class="grid two">
-  <section class="card stack">
-    <h2>Các con</h2>
-    {% for k in kids %}
-    <a class="kid-head" href="/children/{{ k.id }}" style="text-decoration:none;color:inherit;padding:6px 0">
-      <img src="/static/mascots/{{ k.avatar }}_happy.svg" alt="" style="width:48px;height:48px">
-      <div><div class="name" style="font-size:1.05rem">{{ k.nickname }}</div><div class="small muted">{{ k.age }} tuổi · {{ k.devices|length }} máy</div></div>
-    </a>
-    {% else %}<p class="muted">Chưa có.</p>{% endfor %}
-    <a class="btn" href="/children/new">+ Thêm con</a>
-  </section>
-  <section class="card stack">
-    <h2>Người giám hộ</h2>
-    <p class="small muted">Tên gọi dùng để ký lời nhắn (“Mẹ nhắn…”) và ghi rõ “ai đã đổi gì” trong nhật ký con xem được.</p>
-    {% for g in guardians %}
-    <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:8px 0">
-      <span><strong>{{ g.display }}</strong> <span class="muted small">· con gọi là “{{ g.call }}”</span></span>
-      {% if g.id == web.session.guardian_id %}<span class="pill active">Đang thao tác</span>{% endif %}
+<div class="page-head">
+  <div><h1>Gia đình</h1><p class="sub">Hồ sơ các con và những người giám hộ cùng quản lý.</p></div>
+  <a class="btn" href="/children/new">{{ icon('plus') }}Thêm hồ sơ con</a>
+</div>
+<div class="bento">
+  <section class="card s7">
+    <div class="card-head"><h2 class="card-title"><span class="tile-ic sun">{{ icon('smile') }}</span>Các con</h2></div>
+    <div class="devices">
+      {% for k in kids %}
+      <a class="device" href="/children/{{ k.id }}" style="display:flex;align-items:center;gap:14px;text-decoration:none">
+        <div class="avatar {{ k.avatar }}"><img src="/static/mascots/{{ k.avatar }}_happy.svg" alt=""></div>
+        <div style="flex:1;min-width:0"><div class="kid-name" style="font-size:1.2rem">{{ k.nickname }}</div>
+          <div class="kid-meta"><span class="tag">{{ k.age }} tuổi</span><span class="tag">{{ icon('laptop') }}{{ k.devices|length }} máy</span></div></div>
+        {{ icon('chevron-right', 'lg') }}
+      </a>
+      {% else %}<p class="muted">Chưa có hồ sơ nào.</p>{% endfor %}
     </div>
-    {% endfor %}
+  </section>
+  <section class="card s5 tint-indigo">
+    <div class="card-head"><h2 class="card-title"><span class="tile-ic">{{ icon('users') }}</span>Người giám hộ</h2></div>
+    <p class="small muted">Tên gọi dùng để ký lời nhắn (“Mẹ nhắn…”) và ghi rõ “ai đã đổi gì” trong nhật ký con xem được.</p>
+    <ul class="req-list">
+      {% for g in guardians %}
+      <li><span><b>{{ g.display }}</b> <span class="faint small">· con gọi là “{{ g.call }}”</span></span>
+        {% if g.id == web.session.guardian_id %}<span class="pill active">Đang thao tác</span>{% endif %}</li>
+      {% endfor %}
+    </ul>
   </section>
 </div>
 {% endblock %}

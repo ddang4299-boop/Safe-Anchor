@@ -1,18 +1,18 @@
-<!doctype html>
+{% from "_icons.html" import icon %}<!doctype html>
 <html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
-  <title>Ối · OGK</title>
+  <meta name="color-scheme" content="light">
+  <title>Ối · OpenGuard Kids</title>
   <link rel="stylesheet" href="/static/css/ogk.css">
 </head>
-<body>
+<body class="parent">
 <div class="auth">
-  <div class="card empty">
+  <div class="card empty-page">
     <img src="/static/mascots/khien_remind.svg" alt="Khiên Xanh">
-    <h1>{{ 'Không tìm thấy trang' if status == 404 else 'Có chút trục trặc' }}</h1>
+    <h1 style="font-size:1.6rem">{{ 'Không tìm thấy trang' if status == 404 else 'Có chút trục trặc' }}</h1>
     <p class="muted">{{ detail }}</p>
-    <a class="btn" href="/">Về trang chính</a>
+    <a class="btn" href="/">{{ icon('house') }}Về trang chính</a>
   </div>
 </div>
 </body>

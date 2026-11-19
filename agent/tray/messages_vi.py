@@ -83,6 +83,10 @@ MESSAGES: dict[str, list[tuple[str, str]]] = {
     "unlocked": [
         ("all", "Máy đã sẵn sàng rồi {con} ơi!"),
     ],
+    "break_over": [
+        ("all", "Hết giờ tạm nghỉ rồi! Máy sẵn sàng cho {con} rồi nè."),
+        ("choi", "Giờ nghỉ {ba_me} hẹn đã xong. {con} dùng máy tiếp được rồi nhé!"),
+    ],
     "policy_updated": [
         ("all", "{ba_me} vừa cập nhật cài đặt. {con} xem ở mục \"Ai đã đổi gì\" nhé."),
     ],

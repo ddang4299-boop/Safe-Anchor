@@ -1,5 +1,19 @@
 # Báo cáo tiến độ — 8:00 sáng 19/11/2026
 
+> **Cập nhật chiều 19/11 — đại tu giao diện (Modern Tactile + Bento + mascot vector động).** **86/86 test đạt.**
+> Ảnh chụp thật của giao diện mới: [`docs/screenshots/`](docs/screenshots/).
+>
+> | Phần | Thay đổi | Đã kiểm chứng |
+> |---|---|---|
+> | Hệ thống thị giác | Nền gradient `#F8FAFC→#EEF2FF→#F5F3FF`, bóng nhiều lớp ánh xanh tím, kính mờ cho thanh điều hướng, thẻ bo 24px, nút "xúc giác" (viền dưới 4px, rê phóng 1.02, bấm lún 4px), icon Lucide nét 2.2, phông Nunito + Inter **tự lưu trên server** (không gọi Google Fonts: không lộ IP phụ huynh, hợp CSP, chạy trong LAN không Internet) | ảnh chụp 1280 px và 390 px |
+> | Mascot | Vẽ lại bằng SVG có gradient + điểm sáng: Tíc-Tắc (cam san hô, kim đồng hồ quay), Khiên Xanh (vẫy tay, cầm biển nhắc), Sao Nhỏ (tím + bút chì mint); thở/chớp mắt/vẫy tay bằng CSS `@keyframes` ngay trong tệp SVG; Tray tự chớp mắt bằng khung `*_blink.svg` | `tools/gen_mascots.py` |
+> | Dashboard phụ huynh | Bento: thẻ yêu cầu viền sáng `[Đồng ý +15p]` / `[Nhắc bé nghỉ ngơi]`; mỗi con: chỉ số nhanh, biểu đồ 7 ngày, thiết bị có chấm xanh nhấp nháy "Online · Đang học tập" + nút **Khóa khẩn cấp / Tạm nghỉ 2h / +15 phút / Mở khóa**; Chart.js 4.4.1 (tự lưu, cột bo tròn đầu) cho 7 ngày, top ứng dụng/tên miền, phân bổ nhóm; trang của con: một biểu mẫu chính sách duy nhất, lưới lịch 7×48 ô bo góc kéo-tô; thanh tab dưới đáy trên điện thoại | 4 test mới + ảnh chụp |
+> | Trang của trẻ `/kid/...` | Phần đầu kiểu ảnh mẫu (chữ khổng lồ, nhãn chéo, nút cam, sân khấu mascot) + Bento "Hôm nay": vòng thời gian, học tập, giải trí, huy hiệu "Ngôi Sao Đúng Giờ" + chuỗi 7 ngày; không hiện "số lần bị chặn" (không đếm lỗi trên màn hình của trẻ) | test + ảnh chụp |
+> | Tray (PySide6) | HUD viên thuốc kính mờ (thanh đổi màu mượt Mint→Vàng→Cam), màn chặn có mascot nhô khỏi mép thẻ + bong bóng thoại + chip xin giờ nhanh, "Hôm nay" dạng Bento + huy hiệu | ảnh xuất offscreen + test `view_logic` |
+> | Chức năng mới phía sau | **Tạm nghỉ có hạn** (`lock_now` + `minutes`): agent tự mở khi hết hạn, không cần mạng, mốc theo đồng hồ tin cậy và giữ qua khởi động lại; heartbeat gửi **nhóm** đang chạy (không gửi tên ứng dụng); tạo link mới cho con thì link cũ hết hiệu lực; trạng thái thiết bị làm mới riêng bằng `hx-swap-oob` (biểu đồ không vẽ lại) | 2 test mới |
+>
+> Thử nhanh giao diện Tray không cần agent: `.venv\Scripts\python.exe -m agent.tray.app --demo`.
+
 **Tóm tắt:** nền tảng 3 khối (`/agent`, `/server`, `/dashboard`) đã chạy thật trên máy này, end-to-end:
 dashboard → server → agent → DNS proxy `127.0.0.1:53` → Tray của trẻ. **81/81 test đạt** (`pytest`, ~8 giây).
 Phần cần quyền Administrator / máy Windows sạch (cài dịch vụ, ép DNS card mạng, firewall) đã viết nhưng **chưa kiểm chứng**.
