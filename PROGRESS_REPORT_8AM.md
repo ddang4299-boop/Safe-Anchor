@@ -70,7 +70,7 @@ Mở PowerShell tại `d:\FILE CODE\Mạng máy tính` (venv `.venv` Python 3.14
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -v
 ```
-Kỳ vọng: `81 passed`.
+Kỳ vọng: `86 passed` (dòng cảnh báo `httpx2` là của thư viện Starlette, không ảnh hưởng).
 
 **Bước 2 — Chạy toàn hệ thống**
 ```powershell
@@ -81,11 +81,11 @@ Kỳ vọng: 3 cửa sổ (OGK Server, OGK Agent, OGK Kids) + trình duyệt m�
 - Cửa sổ Agent báo cổng 53 bận → chạy lại: `.\run_demo.ps1 -NoReset -DnsPort 15353`.
 
 **Bước 3 — Dashboard** (đăng nhập `demo@ogk.local` / `OgkDemo@2026`)
-- Tổng quan: thẻ Bin có 2 máy — `PC-cua-Bin` (máy mẫu, "Ngoại tuyến") và **máy này** (tên máy thật, "Đang dùng", thời gian còn lại); thẻ Na; mục "Yêu cầu của các con" có yêu cầu mẫu "Con sắp xong màn chơi ạ" (gắn với máy mẫu nên duyệt xong lệnh sẽ "chờ máy kết nối lại").
-- Bấm **+15 phút** ở dòng **máy này** của Bin → "Đã gửi tức thì" → HUD trên máy cộng giờ, toast Sao Nhỏ "Mẹ đã đồng ý…".
-- Bin → **Thời gian & lịch**: kéo-tô lưới 7×48, bấm "Ngày đi học", Lưu → "Đã lưu (phiên bản N)".
-- Bin → **Báo cáo**: biểu đồ 7 ngày / 4 tuần, top ứng dụng / tên miền, số lần chặn; **Nhật ký**: "Mẹ đã đổi … từ X thành Y".
-- Thu nhỏ trình duyệt về bề rộng điện thoại: thanh điều hướng chuyển xuống đáy.
+- Tổng quan: thẻ yêu cầu viền sáng có yêu cầu mẫu "Con sắp xong màn chơi ạ" (gắn với máy mẫu nên duyệt xong lệnh sẽ "chờ máy kết nối lại"); cụm Bento của Bin: chỉ số nhanh, biểu đồ 7 ngày, top ứng dụng/tên miền, thẻ **Thiết bị** có `PC-cua-Bin` (máy mẫu, "Ngoại tuyến") và **máy này** (tên máy thật, chấm xanh nhấp nháy "Online · Đang dùng máy" — mở Word/Scratch thì đổi thành "Đang học tập" sau ≤ 60 giây).
+- Bấm **+15 phút** ở thẻ **máy này** → "Đã gửi tức thì" → viên HUD trên máy cộng giờ, toast Sao Nhỏ "Mẹ đã đồng ý…".
+- **Cài đặt chi tiết** (trang của Bin, một trang cuộn): đổi hạn mức, bật/tắt chip nhóm nội dung, kéo-tô lưới 7×48 hoặc bấm "Mẫu ngày đi học" → **Lưu chính sách** → "Đã lưu (phiên bản N)", nhãn phiên bản tự tăng; cuộn xuống **Nhật ký thay đổi**: "Mẹ đã đổi … từ X thành Y".
+- Thu nhỏ trình duyệt về bề rộng điện thoại (F12 → Ctrl+Shift+M): thanh tab kính mờ chuyển xuống đáy, lưới lịch cuộn ngang trong thẻ.
+- Trang của trẻ: mở `http://127.0.0.1:8000/kid/xem-cua-bin-demo-token-2026` (hoặc bấm **Tạo link cho con** — link cũ sẽ hết hiệu lực).
 
 **Bước 4 — DNS (PowerShell mới)**
 ```powershell
@@ -100,10 +100,10 @@ nslookup -vc example.com 127.0.0.1       # qua TCP
 (Nếu dùng `-DnsPort 15353` thì thêm `-port=15353` vào nslookup và `--proxy 127.0.0.1:15353`.) Sau vài giây, OGK Kids hiện toast Khiên Xanh "Trang tiktok.com chưa mở cho Bin…".
 
 **Bước 5 — Xin thêm giờ (luồng trẻ → phụ huynh, thời gian thực)**
-Trên OGK Kids: bấm viên HUD → "🙋 Xin giờ" → chọn 30 phút, gõ lý do → Gửi. Trên dashboard, trong ≤ 5 giây yêu cầu hiện ở "Yêu cầu của các con" → bấm chip lời nhắn → **Đồng ý** → trên máy toast "Mẹ đã đồng ý cho Bin thêm 30 phút rồi đó! Mẹ nhắn: …".
+Trên OGK Kids: bấm viên HUD → **🙋 Xin giờ** → chọn 30 phút, bấm một chip lý do (hoặc tự gõ) → **Gửi Mẹ**. Trên dashboard, trong ≤ 5 giây yêu cầu hiện ở thẻ viền sáng "Yêu cầu của các con" → (tùy chọn) "Đổi số phút hoặc gửi lời nhắn riêng" → **Đồng ý +30p** → trên máy toast "Mẹ đã đồng ý cho Bin thêm 30 phút rồi đó! Mẹ nhắn: …". Thử thêm **Nhắc bé nghỉ ngơi** → toast kèm lời nhắn dịu dàng mặc định.
 
 **Bước 6 — Khóa ngay / màn hình chặn**
-Dashboard → **Tạm nghỉ ngay** → OGK Kids hiện màn hình Tíc-Tắc buồn ngủ "Máy đang tạm nghỉ" + "Xin thêm giờ" (agent đang `enforce=False` nên **không** khóa Windows thật; cửa sổ Agent ghi "[enforce=False] Sẽ khóa phiên"). **Mở khóa 30′** để quay lại.
+Dashboard → **Khóa khẩn cấp** (xác nhận) → OGK Kids hiện màn chặn: Tíc-Tắc buồn ngủ nhô khỏi mép thẻ, "Máy đang tạm nghỉ", chip xin giờ nhanh (agent đang `enforce=False` nên **không** khóa Windows thật; cửa sổ Agent ghi "[enforce=False] Sẽ khóa phiên"). **Mở khóa** để quay lại. Thử **Tạm nghỉ 2h** → màn chặn ghi "Máy tạm nghỉ đến HH:MM", dashboard hiện "Tạm nghỉ đến HH:MM"; hết hạn agent tự mở (không cần mạng).
 
 **Bước 7 (tùy chọn, cần Admin) — chống lùi đồng hồ**
 Lùi giờ hệ thống 3 tiếng (`Set-Date (Get-Date).AddHours(-3)` trong PowerShell Admin) → số phút đã dùng **không reset**, thời gian còn lại **không tăng**; heartbeat kế tiếp → Dashboard thẻ Bin hiện "⏰ … cảnh báo đồng hồ máy bị chỉnh". Nhớ đặt lại giờ (`w32tm /resync`).
