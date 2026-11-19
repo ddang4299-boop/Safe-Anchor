@@ -24,7 +24,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from agent import schedule as sch
-from agent.domain_rules import normalize
+from agent.domain_rules import CategoryMap, normalize
 
 from .. import audit
 from ..access import children_of, owned_child, owned_device, owned_request
@@ -32,7 +32,8 @@ from ..context import AppContext, client_ip, get_ctx
 from ..db import get_db
 from ..models import (AuditLog, Child, Command, DailyUsage, Device, Event, IntegrityAlert, KidLink, PairingCode,
                       UnlockRequest)
-from ..policy_service import age_mode, create_policy_version, current_policy, default_policy_body, school_schedule
+from ..policy_service import (DEFAULT_APP_CATEGORIES, age_mode, categories_map, create_policy_version, current_policy,
+                              default_policy_body, school_schedule)
 from ..reports import child_report
 from ..security import format_pairing_code, new_pairing_code, random_token, sha256_hex
 from ..web import WebCtx, current_web, form_with_csrf, render
@@ -88,6 +89,35 @@ def device_view(ctx: AppContext, dev: Device) -> dict:
 
 
 AGE_GROUP = {"mam": "Mầm 6–8", "choi": "Chồi 9–11"}
+PRONOUNS = ("con", "em", "mình", "cháu")
+AVATARS = {"tictac": "Tíc-Tắc", "khien": "Khiên Xanh", "sao": "Sao Nhỏ"}  # bạn đồng hành của con trên máy
+
+# Trạng thái GỘP của một con (cho thanh chọn hồ sơ): máy "đang dùng" được ưu tiên hiển thị.
+KID_STATUS = (("active", "Đang dùng"), ("grace", "Sắp tạm nghỉ"), ("locked", "Tạm nghỉ"), ("offline", "Ngoại tuyến"))
+
+# Biểu tượng (Lucide) cho mỗi nhóm nội dung: "icon ứng dụng" trong Top ứng dụng / Top tên miền.
+# Không tải favicon thật của trang web: làm vậy là để trình duyệt phụ huynh gọi tới bên thứ ba
+# (lộ IP + danh sách trang con đã vào) và vi phạm CSP 'self'.
+CAT_ICON = {"education": "graduation-cap", "games": "gamepad-2", "entertainment": "clapperboard",
+            "social": "message-circle", "inappropriate": "shield", "uncategorized": "app-window"}
+BROWSERS = {"chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "brave.exe"}
+# Thứ tự 6 thẻ nhóm nội dung (mỗi nhóm một màu pastel cố định, khớp màu lát biểu đồ tròn)
+CAT_ORDER = ["education", "entertainment", "games", "social", "uncategorized", "inappropriate"]
+
+
+def kid_status(devs: list[dict]) -> dict:
+    states = {d["status"] for d in devs}
+    for key, label in KID_STATUS:
+        if key in states:
+            return {"status": key, "label": label}
+    return {"status": "none", "label": "Chưa ghép máy"}
+
+
+def quota_for(day_iso: str, body: dict) -> int:
+    """Hạn mức của MỘT ngày theo chính sách hiện hành (thứ 7, CN dùng weekend_min)."""
+    q = body.get("quota") or {}
+    wd = datetime.fromisoformat(day_iso).weekday()
+    return int(q.get("weekend_min" if wd >= 5 else "weekday_min") or 0)
 
 
 def child_card(db: Session, ctx: AppContext, child: Child, with_report: bool = False) -> dict:
@@ -97,14 +127,74 @@ def child_card(db: Session, ctx: AppContext, child: Child, with_report: bool = F
     pending = db.scalar(select(func.count()).select_from(UnlockRequest)
                         .where(UnlockRequest.child_id == child.id, UnlockRequest.status == "pending")) or 0
     pol = current_policy(db, child.id)
+    body = json.loads(pol.body_json) if pol else default_policy_body(child.birth_year)
     alerts = db.scalar(select(func.count()).select_from(IntegrityAlert)
                        .where(IntegrityAlert.child_id == child.id, IntegrityAlert.ts > time.time() - 86400)) or 0
     card = {"id": child.id, "nickname": nick(ctx, child), "avatar": child.avatar_key, "devices": devs,
             "pending": pending, "policy_version": pol.version if pol else 0, "alerts": alerts,
-            "age": datetime.now().year - child.birth_year, "group": AGE_GROUP[age_mode(child.birth_year)]}
+            "age": datetime.now().year - child.birth_year, "group": AGE_GROUP[age_mode(child.birth_year)],
+            "birth_year": child.birth_year, "self_pronoun": child.self_pronoun, "state": kid_status(devs)}
     if with_report:
-        card["report"] = child_report(db, child.id, cipher=ctx.cipher)
+        card["report"] = enrich_report(db, child_report(db, child.id, cipher=ctx.cipher), body)
     return card
+
+
+def enrich_report(db: Session, r: dict, body: dict) -> dict:
+    """Thêm phần hiển thị cho PHỤ HUYNH: hạn mức từng ngày (đường "giới hạn cho phép" trên biểu đồ 7 ngày,
+    ngày thường/cuối tuần khác nhau) và nhóm + biểu tượng cho từng ứng dụng / tên miền trong bảng Top."""
+    for d in r["daily"]:
+        d["quota"] = quota_for(d["day"], body)
+    r["over_days"] = sum(1 for d in r["daily"] if d["quota"] and d["minutes"] > d["quota"])
+    r["today_quota"] = r["daily"][-1]["quota"]
+    app_cats = {**DEFAULT_APP_CATEGORIES, **((body.get("app_rules") or {}).get("categories") or {})}
+    for a in r["top_apps"]:
+        a["cat"] = app_cats.get(a["name"], "uncategorized")
+        a["icon"] = "globe" if a["name"] in BROWSERS else CAT_ICON.get(a["cat"], "app-window")
+    cmap = CategoryMap(categories_map(db))
+    for dom in r["top_domains"]:
+        dom["cat"] = cmap.category(dom["name"])
+        dom["icon"] = "globe" if dom["cat"] == "uncategorized" else CAT_ICON.get(dom["cat"], "globe")
+
+    # Gom theo NHÓM nội dung cho "xem chi tiết khi cần" (progressive disclosure): mặc định phụ huynh chỉ thấy
+    # thẻ tổng của từng nhóm; bấm vào thẻ (hoặc lát biểu đồ tròn) mới mở ứng dụng / tên miền / nhật ký của nhóm đó.
+    def cat_of(kind: str, subject: str) -> str:
+        return app_cats.get(subject, "uncategorized") if kind in ("app_stop", "blocked_app") else cmap.category(subject)
+
+    groups = {c: {"key": c, "minutes": r["cats_week"].get(c, 0), "apps": [], "domains": [], "blocked": [], "log": []}
+              for c in CAT_ORDER}
+    for c, m in r["cats_week"].items():
+        groups.setdefault(c, {"key": c, "minutes": m, "apps": [], "domains": [], "blocked": [], "log": []})
+    for a in r["top_apps"]:
+        groups.get(a["cat"], groups["uncategorized"])["apps"].append(a)
+    for dom in r["top_domains"]:
+        groups.get(dom["cat"], groups["uncategorized"])["domains"].append(dom)
+    for b in r["blocked"]:
+        b["cat"] = cat_of(b["type"], b["name"])
+        b["icon"] = "app-window" if b["type"] == "blocked_app" else "globe"
+        groups.get(b["cat"], groups["uncategorized"])["blocked"].append(b)
+    for e in r["recent"]:
+        g = groups.get(cat_of(e["type"], e["subject"]), groups["uncategorized"])
+        if len(g["log"]) < 12:
+            g["log"].append(e)
+    total = sum(r["cats_week"].values())
+    for g in groups.values():
+        g["share"] = round(100 * g["minutes"] / total) if total else 0
+        g["blocked_n"] = sum(b["count"] for b in g["blocked"])
+        g["icon"] = CAT_ICON.get(g["key"], "app-window")
+    r["groups"] = list(groups.values())
+
+    # Số liệu tóm tắt cho dải "con số" dưới biểu đồ 7 ngày
+    r["avg_day"] = round(r["week_minutes"] / 7)
+    r["peak"] = max(r["daily"], key=lambda d: d["minutes"])
+    r["edu_share"] = round(100 * r["cats_week"].get("education", 0) / total) if total else 0
+    return r
+
+
+def requests_ctx(db: Session, ctx: AppContext, web: WebCtx) -> dict:
+    """Dữ liệu cho _requests.html khi trả về qua HTMX. oob_counts: kèm số yêu cầu chờ của TỪNG con
+    (hx-swap-oob) => huy hiệu trên thanh chọn hồ sơ tự cập nhật cùng lúc với danh sách yêu cầu."""
+    return {"web": web, "requests": pending_requests(db, ctx, web.parent.id), "notes": NOTE_SUGGESTIONS,
+            "oob_counts": True, "kid_ids": [c.id for c in children_of(db, web.parent.id)]}
 
 
 def pending_requests(db: Session, ctx: AppContext, parent_id: int) -> list[dict]:
@@ -112,6 +202,7 @@ def pending_requests(db: Session, ctx: AppContext, parent_id: int) -> list[dict]
                       .where(Child.parent_id == parent_id, UnlockRequest.status == "pending")
                       .order_by(UnlockRequest.created_at)).all()
     return [{"id": r.id, "minutes": r.minutes, "created_at": r.created_at, "child": nick(ctx, c), "avatar": c.avatar_key,
+             "child_id": c.id,
              "reason": ctx.cipher.decrypt(r.reason_enc, "unlock_requests.reason")} for r, c in rows]
 
 
@@ -171,35 +262,45 @@ SHA_RE = r"[0-9a-f]{64}"
 
 # ------------------------------------------------------------------ tổng quan
 @router.get("/", response_class=HTMLResponse)
-def overview(request: Request, web: WebCtx = Depends(current_web), db: Session = Depends(get_db),
-             ctx: AppContext = Depends(get_ctx)):
+def overview(request: Request, con: int | None = None, web: WebCtx = Depends(current_web),
+             db: Session = Depends(get_db), ctx: AppContext = Depends(get_ctx)):
+    """Tổng quan: thanh chọn hồ sơ (?con=<id>) + một cụm Bento cho MỖI con. Mọi cụm đều có trong trang
+    (tắt JS vẫn chuyển hồ sơ được bằng liên kết); app.js chỉ ẩn/hiện cụm => chuyển tức thì, không tải lại."""
     kids = [child_card(db, ctx, c, with_report=True) for c in children_of(db, web.parent.id)]
+    selected = con if any(k["id"] == con for k in kids) else (kids[0]["id"] if kids else None)
+    # Hướng dẫn nhanh 4 bước: đánh dấu bước đã xong từ dữ liệu thật của gia đình này
+    links = db.scalar(select(func.count()).select_from(KidLink).join(Child, KidLink.child_id == Child.id)
+                      .where(Child.parent_id == web.parent.id)) or 0
+    guide = {"kid": bool(kids), "device": any(k["devices"] for k in kids),
+             "policy": any(k["policy_version"] > 1 for k in kids), "link": links > 0}
     return render(request, "overview.html", {"web": web, "kids": kids, "page": "overview", "ctx": ctx,
-                                             "requests": pending_requests(db, ctx, web.parent.id),
-                                             "notes": NOTE_SUGGESTIONS, "today_text": today_text()})
+                                             "selected": selected, "requests": pending_requests(db, ctx, web.parent.id),
+                                             "notes": NOTE_SUGGESTIONS, "today_text": today_text(), "guide": guide})
 
 
 @router.get("/partials/status", response_class=HTMLResponse)
 def status_partial(request: Request, web: WebCtx = Depends(current_web), db: Session = Depends(get_db),
                    ctx: AppContext = Depends(get_ctx)):
-    """Trạng thái thiết bị theo thời gian thực: trả về các thẻ thiết bị dạng hx-swap-oob => chỉ thay đúng thẻ
-    thiết bị (id="dev-..."), biểu đồ và ô đang gõ trên trang không bị vẽ lại."""
-    devs = [device_view(ctx, d) for c in children_of(db, web.parent.id) for d in c.devices if not d.revoked]
-    return render(request, "_status.html", {"devices": devs})
+    """Trạng thái thiết bị theo thời gian thực: trả về các thẻ thiết bị + nhãn trạng thái trên tab hồ sơ dạng
+    hx-swap-oob => chỉ thay đúng các phần tử có cùng id, biểu đồ và ô đang gõ trên trang không bị vẽ lại."""
+    kids = []
+    for c in children_of(db, web.parent.id):
+        devs = [device_view(ctx, d) for d in c.devices if not d.revoked]
+        kids.append({"id": c.id, "devices": devs, "state": kid_status(devs)})
+    return render(request, "_status.html", {"kids": kids, "devices": [d for k in kids for d in k["devices"]]})
 
 
 @router.get("/partials/overview", response_class=HTMLResponse)
 def overview_partial(request: Request, web: WebCtx = Depends(current_web), db: Session = Depends(get_db),
                      ctx: AppContext = Depends(get_ctx)):
     kids = [child_card(db, ctx, c, with_report=True) for c in children_of(db, web.parent.id)]
-    return render(request, "_overview_cards.html", {"web": web, "kids": kids})
+    return render(request, "_overview_cards.html", {"web": web, "kids": kids, "selected": kids[0]["id"] if kids else None})
 
 
 @router.get("/partials/requests", response_class=HTMLResponse)
 def requests_partial(request: Request, web: WebCtx = Depends(current_web), db: Session = Depends(get_db),
                      ctx: AppContext = Depends(get_ctx)):
-    return render(request, "_requests.html", {"web": web, "requests": pending_requests(db, ctx, web.parent.id),
-                                              "notes": NOTE_SUGGESTIONS})
+    return render(request, "_requests.html", requests_ctx(db, ctx, web))
 
 
 @router.get("/partials/badge", response_class=HTMLResponse)
@@ -225,11 +326,11 @@ async def child_create(request: Request, web: WebCtx = Depends(current_web), db:
         birth_year = int(form.get("birth_year", 0))
     except ValueError:
         birth_year = 0
-    if not nickname or pronoun not in ("con", "em", "mình", "cháu") or not 2005 <= birth_year <= datetime.now().year:
+    if not nickname or pronoun not in PRONOUNS or not 2005 <= birth_year <= datetime.now().year:
         return render(request, "child_new.html", {"web": web, "page": "family",
                                                   "error": "Vui lòng nhập tên gọi, cách xưng hô và năm sinh hợp lệ."}, 400)
     child = Child(parent_id=web.parent.id, nickname_enc=ctx.cipher.encrypt(nickname, "children.nickname"),
-                  self_pronoun=pronoun, birth_year=birth_year, avatar_key=str(form.get("avatar_key", "tictac"))[:16],
+                  self_pronoun=pronoun, birth_year=birth_year, avatar_key=(a if (a := str(form.get("avatar_key", ""))) in AVATARS else "tictac"),
                   created_at=time.time())
     db.add(child)
     db.flush()
@@ -253,7 +354,7 @@ def child_page(child_id: int, request: Request, web: WebCtx = Depends(current_we
     data = {"web": web, "page": "child", "child": child_card(db, ctx, child), "child_obj": child,
             "policy": body, "policy_version": pol.version if pol else 0, "categories": CATEGORY_CHOICES,
             "msg": request.query_params.get("msg"),
-            "report": child_report(db, child.id, cipher=ctx.cipher), "audience": "parent",
+            "report": enrich_report(db, child_report(db, child.id, cipher=ctx.cipher), body), "audience": "parent",
             "entries": [{"e": e, "who": audit.actor_text(e), "lines": audit.humanize(e)} for e in entries],
             "alerts": db.scalars(select(IntegrityAlert).where(IntegrityAlert.child_id == child.id)
                                  .order_by(IntegrityAlert.ts.desc()).limit(20)).all(),
@@ -265,21 +366,37 @@ def child_page(child_id: int, request: Request, web: WebCtx = Depends(current_we
 @router.post("/children/{child_id}/profile")
 async def child_profile_update(child_id: int, request: Request, web: WebCtx = Depends(current_web),
                                db: Session = Depends(get_db), ctx: AppContext = Depends(get_ctx)):
+    """Lưu "Hồ sơ của con" (bảng mở ra khi phụ huynh bấm vào TÊN con): tên gọi, năm sinh, cách xưng hô,
+    bạn đồng hành. Quay về đúng trang đã mở bảng (back chỉ nhận 3 giá trị cố định => không có open redirect)."""
     child = owned_child(db, web.parent.id, child_id)
     form = await form_with_csrf(request, web, ctx)
+    back = {"overview": f"/?con={child.id}", "family": "/family"}.get(str(form.get("back", "")), f"/children/{child.id}")
+    sep = "&" if "?" in back else "?"
     nickname = str(form.get("nickname", "")).strip()[:20]
     pronoun = str(form.get("self_pronoun", child.self_pronoun))
-    if nickname and pronoun in ("con", "em", "mình", "cháu"):
-        old = {"nickname": nick(ctx, child), "self_pronoun": child.self_pronoun}
+    avatar = str(form.get("avatar_key", child.avatar_key))
+    try:
+        birth_year = int(form.get("birth_year", child.birth_year))
+    except ValueError:
+        birth_year = 0
+    if (not nickname or pronoun not in PRONOUNS or avatar not in AVATARS
+            or not 2005 <= birth_year <= datetime.now().year):
+        return RedirectResponse(f"{back}{sep}saved=invalid", status_code=303)
+    changed = [f for f, cur, val in (("nickname", nick(ctx, child), nickname), ("birth_year", child.birth_year, birth_year),
+                                     ("self_pronoun", child.self_pronoun, pronoun), ("avatar_key", child.avatar_key, avatar))
+               if cur != val]
+    if changed:
+        old = {"fields": changed, "birth_year": child.birth_year, "self_pronoun": child.self_pronoun, "avatar_key": child.avatar_key}
         child.nickname_enc = ctx.cipher.encrypt(nickname, "children.nickname")
-        child.self_pronoun = pronoun
+        child.birth_year, child.self_pronoun, child.avatar_key = birth_year, pronoun, avatar
+        # Nhật ký: ghi TRƯỜNG nào đổi; tên gọi được mã hóa nên KHÔNG chép tên cũ/mới dạng rõ vào audit_log
         audit.record(db, actor_type="parent", actor_id=str(web.parent.id), actor_label=web.actor_label,
                      ip=client_ip(request), child_id=child.id, entity="child", action="update", old=old,
-                     new={"nickname": nickname, "self_pronoun": pronoun})
+                     new={"fields": changed, "birth_year": birth_year, "self_pronoun": pronoun, "avatar_key": avatar})
         db.commit()
-        for d in child.devices:  # hồ sơ nằm trong chính sách đã ký => báo agent tải lại
+        for d in child.devices:  # hồ sơ đi kèm chính sách đã ký (tuổi => chế độ Mầm/Chồi) => báo agent tải lại
             await ctx.hub.send(d.id, {"type": "policy_changed"})
-    return RedirectResponse(f"/children/{child.id}?msg=Đã+lưu+hồ+sơ#ho-so", status_code=303)
+    return RedirectResponse(f"{back}{sep}saved={'profile' if changed else 'nochange'}", status_code=303)
 
 
 # ------------------------------------------------------------------ chính sách
@@ -460,8 +577,7 @@ async def decide_request(request_id: int, decision: str, request: Request, web: 
     req = owned_request(db, web.parent.id, request_id)
     form = await form_with_csrf(request, web, ctx)
     if req.status != "pending":
-        return render(request, "_requests.html", {"web": web, "requests": pending_requests(db, ctx, web.parent.id),
-                                                  "notes": NOTE_SUGGESTIONS})
+        return render(request, "_requests.html", requests_ctx(db, ctx, web))
     note = str(form.get("note", "")).strip()[:200]
     if decision == "deny" and not note:
         note = REST_NOTE  # "Nhắc bé nghỉ ngơi": luôn kèm lời nhắn dịu dàng, không từ chối "im lặng"
@@ -481,8 +597,7 @@ async def decide_request(request_id: int, decision: str, request: Request, web: 
             await issue_command(ctx, db, dev, "add_time", {**payload, "minutes": minutes})
         else:
             await issue_command(ctx, db, dev, "request_denied", payload)
-    return render(request, "_requests.html", {"web": web, "requests": pending_requests(db, ctx, web.parent.id),
-                                              "notes": NOTE_SUGGESTIONS})
+    return render(request, "_requests.html", requests_ctx(db, ctx, web))
 
 
 # ------------------------------------------------------------------ xuất CSV & xóa dữ liệu

@@ -1,33 +1,44 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
+{% from "_macros.html" import kid_name, profile_dialog %}
+{% block title %}Gia đình · SafeAnchor{% endblock %}
 {% block content %}
-<div class="page-head">
-  <div><h1>Gia đình</h1><p class="sub">Hồ sơ các con và những người giám hộ cùng quản lý.</p></div>
-  <a class="btn" href="/children/new">{{ icon('plus') }}Thêm hồ sơ con</a>
-</div>
-<div class="bento">
-  <section class="card s7">
-    <div class="card-head"><h2 class="card-title"><span class="tile-ic sun">{{ icon('smile') }}</span>Các con</h2></div>
-    <div class="devices">
-      {% for k in kids %}
-      <a class="device" href="/children/{{ k.id }}" style="display:flex;align-items:center;gap:14px;text-decoration:none">
-        <div class="avatar {{ k.avatar }}"><img src="/static/mascots/{{ k.avatar }}_happy.svg" alt=""></div>
-        <div style="flex:1;min-width:0"><div class="kid-name" style="font-size:1.2rem">{{ k.nickname }}</div>
-          <div class="kid-meta"><span class="tag">{{ k.age }} tuổi</span><span class="tag">{{ icon('laptop') }}{{ k.devices|length }} máy</span></div></div>
-        {{ icon('chevron-right', 'lg') }}
-      </a>
-      {% else %}<p class="muted">Chưa có hồ sơ nào.</p>{% endfor %}
-    </div>
-  </section>
-  <section class="card s5 tint-indigo">
-    <div class="card-head"><h2 class="card-title"><span class="tile-ic">{{ icon('users') }}</span>Người giám hộ</h2></div>
-    <p class="small muted">Tên gọi dùng để ký lời nhắn (“Mẹ nhắn…”) và ghi rõ “ai đã đổi gì” trong nhật ký con xem được.</p>
-    <ul class="req-list">
-      {% for g in guardians %}
-      <li><span><b>{{ g.display }}</b> <span class="faint small">· con gọi là “{{ g.call }}”</span></span>
-        {% if g.id == web.session.guardian_id %}<span class="pill active">Đang thao tác</span>{% endif %}</li>
-      {% endfor %}
-    </ul>
-  </section>
-</div>
+<section class="band-hero page-head-band">
+  <div class="container">
+    <p class="eyebrow">{{ icon('users') }}Gia đình</p>
+    <h1>Các con và <span class="hl">người cùng quản lý</span></h1>
+    <p class="lead">Hồ sơ của từng con và những người giám hộ. Mọi thay đổi đều ghi rõ người thực hiện trong nhật ký con xem được.</p>
+    <div class="hero-cta"><a class="btn btn-lg" href="/children/new">{{ icon('plus') }}Thêm hồ sơ con</a></div>
+  </div>
+</section>
+<section class="band">
+  <div class="container form-grid">
+    <section class="panel s7">
+      <div class="panel-head"><span class="tile sun">{{ icon('smile') }}</span><h3>Các con</h3></div>
+      <div class="kid-list">
+        {% for k in kids %}
+        <div class="kid-row">
+          <span class="avatar {{ k.avatar }}"><img src="/static/mascots/{{ k.avatar }}_happy.svg" alt=""></span>
+          <span class="min0 grow"><b>{{ kid_name(k) }}</b><span class="meta">{{ k.age }} tuổi · nhóm {{ k.group }} · {{ k.devices|length }} máy</span></span>
+          <span class="kst {{ k.state.status }}"><i class="dot"></i>{{ k.state.label }}</span>
+          <a class="btn btn-outline btn-sm" href="/children/{{ k.id }}">Cài đặt{{ icon('chevron-right') }}</a>
+        </div>
+        {% else %}
+        <div class="empty-card"><img src="/static/brand/mascot.png" alt=""><div><h3>Chưa có hồ sơ nào</h3><p>Tạo hồ sơ đầu tiên cho con để bắt đầu.</p></div></div>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="panel s5 tint">
+      <div class="panel-head"><span class="tile">{{ icon('users') }}</span><h3>Người giám hộ</h3></div>
+      <p class="small muted">Tên gọi dùng để ký lời nhắn (“Mẹ nhắn…”) và ghi rõ “ai đã đổi gì” trong nhật ký con xem được.</p>
+      <ul class="alert-list">
+        {% for g in guardians %}
+        <li><span><b>{{ g.display }}</b> <span class="faint small">· con gọi là “{{ g.call }}”</span></span>
+          {% if g.id == web.session.guardian_id %}<span class="pill active">Đang thao tác</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+</section>
+{% for k in kids %}{{ profile_dialog(k, web.csrf, 'family') }}{% endfor %}
 {% endblock %}

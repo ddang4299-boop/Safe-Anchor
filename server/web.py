@@ -41,6 +41,15 @@ def _mins(m) -> str:
     return f"{h} giờ" + (f" {r} phút" if r else "")
 
 
+def _hm(m) -> str:
+    """Dạng gọn cho nhãn cuối thanh / thẻ số liệu: 45p, 2h, 4h 20p."""
+    m = int(m or 0)
+    if m < 60:
+        return f"{m}p"
+    h, r = divmod(m, 60)
+    return f"{h}h" + (f" {r:02d}p" if r else "")
+
+
 def _hhmm(ts, offset=420) -> str:
     return datetime.fromtimestamp(ts, timezone(timedelta(minutes=offset))).strftime("%H:%M %d/%m") if ts else ""
 
@@ -50,7 +59,7 @@ def _hhmm(ts, offset=420) -> str:
 CATEGORY_PARENT = {"education": "Giáo dục", "entertainment": "Giải trí", "social": "Mạng xã hội",
                    "games": "Trò chơi", "inappropriate": "Không phù hợp lứa tuổi", "uncategorized": "Chưa phân loại"}
 
-templates.env.filters.update(mins=_mins, when=when_text, cat_vi=lambda c: CATEGORY_VI.get(c, c), hhmm=_hhmm,
+templates.env.filters.update(mins=_mins, hm=_hm, when=when_text, cat_vi=lambda c: CATEGORY_VI.get(c, c), hhmm=_hhmm,
                              cat_label=lambda c: CATEGORY_PARENT.get(c, c), app_name=app_display)
 
 

@@ -2,18 +2,20 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <title>Ối · OpenGuard Kids</title>
-  <link rel="stylesheet" href="/static/css/ogk.css">
+  <meta name="color-scheme" content="light"><meta name="theme-color" content="#000056">
+  <title>Ối · SafeAnchor</title>
+  <link rel="icon" href="/static/brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="stylesheet" href="/static/css/safeanchor.css">
 </head>
-<body class="parent">
-<div class="auth">
-  <div class="card empty-page">
-    <img src="/static/mascots/khien_remind.svg" alt="Khiên Xanh">
-    <h1 style="font-size:1.6rem">{{ 'Không tìm thấy trang' if status == 404 else 'Có chút trục trặc' }}</h1>
+<body class="parent auth-page">
+<main class="error-wrap">
+  <div class="panel error-card">
+    <img src="/static/brand/mascot.png" alt="Mascot SafeAnchor">
+    <p class="eyebrow">Lỗi {{ status }}</p>
+    <h1>{{ 'Không tìm thấy trang' if status == 404 else 'Có chút trục trặc' }}</h1>
     <p class="muted">{{ detail }}</p>
     <a class="btn" href="/">{{ icon('house') }}Về trang chính</a>
   </div>
-</div>
+</main>
 </body>
 </html>

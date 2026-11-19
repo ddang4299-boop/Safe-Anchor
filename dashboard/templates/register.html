@@ -2,31 +2,43 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light"><meta name="theme-color" content="#EEF2FF">
-  <title>Đăng ký · OpenGuard Kids</title>
-  <link rel="icon" href="/static/mascots/khien_happy.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/static/css/ogk.css">
+  <meta name="color-scheme" content="light"><meta name="theme-color" content="#000056">
+  <title>Đăng ký · SafeAnchor</title>
+  <link rel="icon" href="/static/brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="/static/brand/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/css/safeanchor.css">
 </head>
-<body class="parent">
-<div class="auth">
-  <div class="logo">
-    <div class="hero" aria-hidden="true"><img src="/static/mascots/sao_celebrate.svg" alt=""></div>
-    <b>OpenGuard <span>Kids</span></b>
-  </div>
-  <div class="card">
-    <h1 style="font-size:1.6rem">Tạo tài khoản gia đình</h1>
-    {% if error %}<div class="toast warn" role="alert">{{ icon('triangle-alert') }}<span>{{ error }}</span></div>{% endif %}
-    <form method="post" action="/auth/register" style="margin-top:16px">
-      <div class="field"><label for="email">Email</label>
-        <input id="email" name="email" type="email" required value="{{ email }}"></div>
-      <div class="field"><label for="password">Mật khẩu (ít nhất 10 ký tự)</label>
-        <input id="password" name="password" type="password" required minlength="10" autocomplete="new-password"></div>
-      <div class="field"><label for="call_name">Con gọi bạn là gì?</label>
-        <input id="call_name" name="call_name" type="text" maxlength="20" placeholder="Ví dụ: Mẹ, Ba, Bà Nội"></div>
-      <button class="btn btn-lg btn-block" type="submit">{{ icon('sparkles') }}Tạo tài khoản</button>
-    </form>
-    <p class="small muted center" style="margin:16px 0 0">Đã có tài khoản? <a href="/auth/login">Đăng nhập</a></p>
-  </div>
-</div>
+<body class="parent auth-page">
+<main class="auth">
+  <section class="auth-art" aria-label="Giới thiệu SafeAnchor">
+    <a class="logo" href="/auth/login"><img src="/static/brand/mascot.png" alt="" width="38" height="42"><span>Safe<b>Anchor</b></span></a>
+    <div class="auth-copy">
+      <p class="eyebrow">Tạo tài khoản gia đình</p>
+      <h1>Bắt đầu chỉ với <span class="hl">4 bước</span></h1>
+      <ul class="auth-points">
+        <li>{{ icon('user-plus') }}Tạo hồ sơ con — chỉ cần tên gọi và năm sinh</li>
+        <li>{{ icon('key-round') }}Ghép máy tính của con bằng mã 8 ký tự</li>
+        <li>{{ icon('sliders-horizontal') }}Đặt giờ dùng máy và nhóm nội dung phù hợp</li>
+      </ul>
+    </div>
+    <img class="auth-mascot" src="/static/brand/mascot.png" alt="Mascot SafeAnchor">
+  </section>
+  <section class="auth-form">
+    <div class="panel">
+      <h2>Tạo tài khoản gia đình</h2>
+      {% if error %}<div class="toast warn" role="alert">{{ icon('triangle-alert') }}<span>{{ error }}</span></div>{% endif %}
+      <form method="post" action="/auth/register">
+        <div class="field"><label for="email">Email</label>
+          <input id="email" name="email" type="email" required value="{{ email }}"></div>
+        <div class="field"><label for="password">Mật khẩu (ít nhất 10 ký tự)</label>
+          <input id="password" name="password" type="password" required minlength="10" autocomplete="new-password"></div>
+        <div class="field"><label for="call_name">Con gọi bạn là gì?</label>
+          <input id="call_name" name="call_name" type="text" maxlength="20" placeholder="Ví dụ: Mẹ, Ba, Bà Nội"></div>
+        <button class="btn btn-lg btn-block" type="submit">{{ icon('sparkles') }}Tạo tài khoản</button>
+      </form>
+      <p class="small muted center alt">Đã có tài khoản? <a href="/auth/login">Đăng nhập</a></p>
+    </div>
+  </section>
+</main>
 </body>
 </html>

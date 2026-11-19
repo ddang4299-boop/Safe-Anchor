@@ -5,8 +5,8 @@
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#EEF2FF">
   <meta name="robots" content="noindex">
-  <title>Hôm nay {{ profile.nickname }} đã dùng gì · OpenGuard Kids</title>
-  <link rel="icon" href="/static/mascots/tictac_happy.svg" type="image/svg+xml">
+  <title>Hôm nay {{ profile.nickname }} đã dùng gì · SafeAnchor</title>
+  <link rel="icon" href="/static/brand/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="stylesheet" href="/static/css/ogk.css">
 </head>
 {# Trang CHỈ ĐỌC cho trẻ, không tải JavaScript. Mascot chuyển động bằng CSS nằm sẵn trong tệp SVG. #}
@@ -14,7 +14,7 @@
 {% set name = profile.nickname %}{% set me = profile.self_pronoun %}{% set avatar = profile.avatar_key or 'tictac' %}
 <header class="k-top">
   <div class="k-top-in glass">
-    <span class="k-logo"><img src="/static/mascots/khien_happy.svg" alt="">OpenGuard Kids</span>
+    <span class="k-logo"><img src="/static/brand/mascot.png" alt="">SafeAnchor</span>
     <nav class="k-nav" aria-label="Các mục">
       <a href="#hom-nay"><span aria-hidden="true">⏰</span>Hôm nay</a>
       <a href="#bao-cao"><span aria-hidden="true">🧩</span>Khám phá</a>
@@ -95,14 +95,14 @@
       </ul>
     </section>
     <section class="card s5 tint-sky" id="bi-mat">
-      <h2><span class="k-ic">🔒</span>OGK biết gì về {{ name }}?</h2>
+      <h2><span class="k-ic">🔒</span>SafeAnchor biết gì về {{ name }}?</h2>
       <div class="k-know">
         <div class="yes"><h3>{{ icon('circle-check') }}Tớ biết</h3>
           <ul><li>{{ icon('check') }}Tên ứng dụng {{ me }} mở</li><li>{{ icon('check') }}Tên trang web (không có nội dung)</li><li>{{ icon('check') }}Thời gian dùng máy</li></ul></div>
         <div class="no"><h3>{{ icon('x') }}Tớ KHÔNG</h3>
           <ul><li>{{ icon('x') }}Đọc tin nhắn</li><li>{{ icon('x') }}Chụp màn hình</li><li>{{ icon('x') }}Nghe micro, bật camera</li></ul></div>
       </div>
-      <p class="small k-sub" style="margin-top:14px">Dữ liệu tự xóa sau 90 ngày. {{ me|capitalize }} luôn thấy biểu tượng OGK trên máy.</p>
+      <p class="small k-sub" style="margin-top:14px">Dữ liệu tự xóa sau 90 ngày. {{ me|capitalize }} luôn thấy biểu tượng SafeAnchor trên máy.</p>
     </section>
   </div>
 </main>

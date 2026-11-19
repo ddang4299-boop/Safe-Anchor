@@ -65,10 +65,13 @@ def child_report(db: Session, child_id: int, tz_offset_min: int = 420, now: floa
     base = (Event.child_id == child_id, Event.ts >= since)
     top_apps = db.execute(select(Event.subject, func.sum(Event.duration_sec).label("sec"), func.count())
                           .where(*base, Event.type == "app_stop").group_by(Event.subject)
-                          .order_by(func.sum(Event.duration_sec).desc()).limit(10)).all()
+                          .order_by(func.sum(Event.duration_sec).desc()).limit(30)).all()
     top_domains = db.execute(select(Event.subject, func.count().label("n"))
                              .where(*base, Event.type == "domain_query").group_by(Event.subject)
-                             .order_by(func.count().desc()).limit(10)).all()
+                             .order_by(func.count().desc()).limit(30)).all()
+    recent = db.execute(select(Event.ts, Event.type, Event.subject, Event.duration_sec)
+                        .where(*base, Event.type.in_(("domain_query", "blocked_domain", "blocked_app", "app_stop")))
+                        .order_by(Event.ts.desc()).limit(300)).all()
     blocked = db.execute(select(Event.type, Event.subject, func.count().label("n"))
                          .where(*base, Event.type.in_(("blocked_app", "blocked_domain")))
                          .group_by(Event.type, Event.subject).order_by(func.count().desc())).all()
@@ -91,8 +94,13 @@ def child_report(db: Session, child_id: int, tz_offset_min: int = 420, now: floa
                      for s, sec, n in top_apps],
         "top_domains": [{"name": s, "count": n} for s, n in top_domains],
         "blocked_total": sum(n for _, _, n in blocked),
+        "blocked_web": sum(n for t, _, n in blocked if t == "blocked_domain"),
+        "blocked_app": sum(n for t, _, n in blocked if t == "blocked_app"),
         "blocked": [{"type": t, "name": s, "count": n,
-                     "display": app_display(s) if t == "blocked_app" else s} for t, s, n in blocked[:10]],
+                     "display": app_display(s) if t == "blocked_app" else s} for t, s, n in blocked[:30]],
+        # Nhật ký chi tiết (mới nhất trước) — dashboard phụ huynh CHỈ hiện khi bấm vào một nhóm nội dung
+        "recent": [{"ts": ts, "type": t, "subject": s, "minutes": round((d or 0) / 60),
+                    "display": app_display(s) if t in ("app_stop", "blocked_app") else s} for ts, t, s, d in recent],
         "requests": [{"id": r.id, "minutes": r.minutes, "status": r.status, "created_at": r.created_at,
                       "reason": dec(r.reason_enc, "unlock_requests.reason"),
                       "note": dec(r.note_enc, "unlock_requests.note")} for r in reqs],

@@ -1,11 +1,12 @@
-{# Partial DÙNG CHUNG: dashboard phụ huynh (audience="parent") và trang của trẻ (audience="kid").
+{# Báo cáo 7 ngày trên TRANG CỦA TRẺ (audience="kid"). Dashboard phụ huynh (SafeAnchor) dùng các macro
+   statbar / cat_explorer / usage_section trong _macros.html — nhánh audience="parent" ở đây còn giữ cho tương thích.
    Cùng nguồn reports.child_report() => trẻ thấy đúng những gì ba mẹ thấy (NT5), chỉ khác câu chữ và "lớp da".
    Riêng trang của trẻ KHÔNG hiện "số lần bị chặn" (OGK_PROMPT_BUILD.md: không đếm lỗi trên màn hình của trẻ);
    trang trẻ không tải JavaScript nên luôn dùng biểu đồ CSS. #}
 {% from "_icons.html" import icon %}
-{% from "_macros.html" import bars, toplist, chart %}
+{% from "_macros.html" import bars, toplist, ranklist, chart %}
 {% set kid = audience == 'kid' %}
-{% set CAT_COLOR = {"education": "#10B981", "entertainment": "#FBBF24", "games": "#FF8E53", "social": "#8B5CF6",
+{% set CAT_COLOR = {"education": "#10B981", "entertainment": "#FBBF24", "games": "#FB923C", "social": "#8B5CF6",
                     "uncategorized": "#94A3B8", "inappropriate": "#CBD5E1"} %}
 {% set cats = report.cats_week %}
 {% set total = cats.values()|sum or 1 %}
@@ -16,7 +17,7 @@
       {% if not kid %}<a class="btn btn-white btn-sm" href="/children/{{ child.id }}/export.csv">{{ icon('download') }}Xuất CSV</a>{% endif %}
     </div>
     {% if kid %}{{ bars(report.daily, report.max_day) }}
-    {% else %}{% call chart('columns', report.daily|map(attribute='date')|list, report.daily|map(attribute='minutes')|list, 'phút', 'indigo', 250, 'Thời lượng 7 ngày') %}{{ bars(report.daily, report.max_day) }}{% endcall %}{% endif %}
+    {% else %}{% call chart('columns', report.daily|map(attribute='date')|list, report.daily|map(attribute='minutes')|list, 'phút', 'indigo', 250, 'Thời lượng 7 ngày, kèm giới hạn cho phép', none, report.daily|map(attribute='quota')|list) %}{{ bars(report.daily, report.max_day) }}{% endcall %}{% endif %}
     <div class="row" style="margin-top:14px"><span class="tag">{{ icon('clock') }}Tổng 7 ngày: {{ report.week_minutes|mins }}</span>
       {% if not kid %}<span class="tag">{{ icon('shield-check') }}Bị chặn: {{ report.blocked_total }} lần</span>{% endif %}</div>
   </section>
@@ -33,17 +34,15 @@
   </section>
 
   <section class="card s6 fill{{ ' tint-mint' if kid }}">
-    <div class="card-head"><h2 class="card-title">{% if kid %}<span class="k-ic">🎒</span>Ứng dụng {{ name }} dùng nhiều nhất{% else %}<span class="tile-ic grape">{{ icon('app-window') }}</span>Top 10 ứng dụng{% endif %}</h2>{% if not kid %}<span class="h-note">phút · 7 ngày</span>{% endif %}</div>
-    {% set apps = report.top_apps[:10] %}
+    <div class="card-head"><h2 class="card-title">{% if kid %}<span class="k-ic">🎒</span>Ứng dụng {{ name }} dùng nhiều nhất{% else %}<span class="tile-ic grape">{{ icon('app-window') }}</span>Top 10 ứng dụng{% endif %}</h2>{% if not kid %}<span class="h-note">7 ngày</span>{% endif %}</div>
     {% if kid %}{{ toplist(report.top_apps, 8, 'app') }}
-    {% else %}{% call chart('hbar', apps|map(attribute='display')|list, apps|map(attribute='minutes')|list, 'phút', 'grape', 56 + 40 * (apps|length or 1), 'Top 10 ứng dụng') %}{{ toplist(report.top_apps, 10, 'app') }}{% endcall %}{% endif %}
+    {% else %}{{ ranklist(report.top_apps, 10, 'app') }}{% endif %}
   </section>
 
   <section class="card s6 fill{{ ' tint-sun' if kid }}">
-    <div class="card-head"><h2 class="card-title">{% if kid %}<span class="k-ic">🌐</span>Trang web {{ name }} hay ghé{% else %}<span class="tile-ic mint">{{ icon('globe') }}</span>Top 10 tên miền{% endif %}</h2>{% if not kid %}<span class="h-note">lượt · 7 ngày</span>{% endif %}</div>
-    {% set doms = report.top_domains[:10] %}
+    <div class="card-head"><h2 class="card-title">{% if kid %}<span class="k-ic">🌐</span>Trang web {{ name }} hay ghé{% else %}<span class="tile-ic mint">{{ icon('globe') }}</span>Top 10 tên miền{% endif %}</h2>{% if not kid %}<span class="h-note">7 ngày</span>{% endif %}</div>
     {% if kid %}{{ toplist(report.top_domains, 10, 'domain') }}
-    {% else %}{% call chart('hbar', doms|map(attribute='name')|list, doms|map(attribute='count')|list, 'lượt', 'mint', 56 + 40 * (doms|length or 1), 'Top 10 tên miền') %}{{ toplist(report.top_domains, 10, 'domain') }}{% endcall %}{% endif %}
+    {% else %}{{ ranklist(report.top_domains, 10, 'domain') }}{% endif %}
     <p class="small muted" style="margin-top:12px">Chỉ lưu tên miền cấp hai (vd khanacademy.org), không lưu địa chỉ trang hay nội dung.</p>
   </section>
 

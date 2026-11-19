@@ -43,7 +43,7 @@ def create_app(settings=None, start_jobs: bool = True) -> FastAPI:
         if task:
             task.cancel()
 
-    app = FastAPI(title="OpenGuard Kids Server", version="0.1.0", lifespan=lifespan,
+    app = FastAPI(title="SafeAnchor Server", version="0.1.0", lifespan=lifespan,
                   description="API cho OGK-Agent (/api/*) và web dashboard phụ huynh.")
     app.state.ctx = AppContext(settings)
     app.mount("/static", StaticFiles(directory=str(DASHBOARD_DIR / "static")), name="static")

@@ -1,3 +1,5 @@
-{# Trả về cho /partials/status: mỗi thẻ thiết bị kèm hx-swap-oob => HTMX thay đúng thẻ có cùng id. #}
-{% from "_macros.html" import device_tile %}
+{# Trả về cho /partials/status: thẻ thiết bị + nhãn trạng thái trên tab hồ sơ, tất cả kèm hx-swap-oob =>
+   HTMX thay đúng phần tử có cùng id. #}
+{% from "_macros.html" import device_tile, kid_state %}
 {% for d in devices %}{{ device_tile(d, oob=true) }}{% endfor %}
+{% for k in kids %}{{ kid_state(k, oob=true) }}{% endfor %}

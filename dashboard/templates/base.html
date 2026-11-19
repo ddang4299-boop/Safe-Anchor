@@ -4,10 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#EEF2FF">
-  <title>{% block title %}OpenGuard Kids · Phụ huynh{% endblock %}</title>
-  <link rel="icon" href="/static/mascots/khien_happy.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/static/css/ogk.css">
+  <meta name="theme-color" content="#000056">
+  <title>{% block title %}SafeAnchor · Phụ huynh{% endblock %}</title>
+  <link rel="icon" href="/static/brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="/static/brand/favicon-64.png" sizes="64x64" type="image/png">
+  <link rel="apple-touch-icon" href="/static/brand/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/css/safeanchor.css">
   <script src="/static/js/htmx.min.js" defer></script>
   <script src="/static/js/chart.umd.min.js" defer></script>
   <script src="/static/js/app.js" defer></script>
@@ -15,13 +17,12 @@
 </head>
 {# CSRF token đi kèm MỌI yêu cầu HTMX qua header X-CSRF-Token #}
 <body class="parent" hx-headers='{"X-CSRF-Token": "{{ web.csrf }}"}'>
-<header class="topbar">
-  <div class="topbar-in glass">
-    <a class="brand" href="/"><img src="/static/mascots/khien_happy.svg" alt="">OpenGuard&nbsp;<b>Kids</b></a>
-    <nav class="navlinks" aria-label="Điều hướng chính">
-      <a href="/" {% if page == 'overview' %}aria-current="page"{% endif %}>{{ icon('house') }}Tổng quan</a>
-      <a href="/family" {% if page in ('family', 'child') %}aria-current="page"{% endif %}>{{ icon('users') }}Gia đình</a>
-    </nav>
+<a class="skip" href="#main">Bỏ qua thanh điều hướng</a>
+<div class="util">
+  <div class="container">
+    <span class="util-live"><i class="dot"></i>Trạng thái máy của con tự cập nhật mỗi 10 giây</span>
+    <a class="util-link" href="/#huong-dan">Hướng dẫn nhanh</a>
+    <a class="util-link" href="/#hoi-dap">Hỏi đáp</a>
     {% if web.guardians|length > 1 %}
     <form class="acting" method="post" action="/auth/as-guardian">
       <input type="hidden" name="csrf_token" value="{{ web.csrf }}">
@@ -34,16 +35,47 @@
     <span class="who" title="{{ web.parent.email }}">{{ web.parent.email }}</span>
     <form method="post" action="/auth/logout" class="inline">
       <input type="hidden" name="csrf_token" value="{{ web.csrf }}">
-      <button class="icon-btn" type="submit" title="Đăng xuất" aria-label="Đăng xuất">{{ icon('log-out') }}</button>
+      <button class="util-btn" type="submit">{{ icon('log-out') }}Đăng xuất</button>
     </form>
   </div>
+</div>
+<header class="nav">
+  <div class="container">
+    <a class="logo" href="/" aria-label="SafeAnchor — Tổng quan"><img src="/static/brand/mascot.png" alt="" width="38" height="42"><span>Safe<b>Anchor</b></span></a>
+    <nav class="nav-links" aria-label="Điều hướng chính">
+      <a href="/" {% if page == 'overview' %}aria-current="page"{% endif %}>Tổng quan</a>
+      <a href="/family" {% if page in ('family', 'child') %}aria-current="page"{% endif %}>Gia đình</a>
+      <a href="/#huong-dan">Hướng dẫn</a>
+      <a href="/#hoi-dap">Câu hỏi thường gặp</a>
+    </nav>
+    <a class="btn btn-sm nav-cta" href="/children/new">{{ icon('plus') }}Thêm hồ sơ con</a>
+  </div>
 </header>
-<main id="main" class="wrap">{% block content %}{% endblock %}</main>
-<footer class="footnote">Công cụ đồng hành, không phải phần mềm theo dõi lén. Con của bạn luôn thấy biểu tượng OGK và được xem dữ liệu của mình cùng nhật ký thay đổi.</footer>
-<nav class="tabbar glass" aria-label="Điều hướng nhanh">
+<main id="main">{% block content %}{% endblock %}</main>
+<footer class="site-foot">
+  <div class="container">
+    <div class="foot-top">
+      <a class="logo" href="/"><img src="/static/brand/mascot.png" alt="" width="38" height="42"><span>Safe<b>Anchor</b></span></a>
+      <p class="foot-tag">Neo giữ thời gian màn hình <span class="hl">vừa vặn cho con</span></p>
+      <a class="btn btn-sm" href="/children/new">{{ icon('plus') }}Thêm hồ sơ con</a>
+    </div>
+    <div class="foot-cols">
+      <div><h4>Bảng điều khiển</h4><a href="/">Tổng quan</a><a href="/family">Gia đình</a><a href="/children/new">Thêm hồ sơ con</a></div>
+      <div><h4>Hỗ trợ phụ huynh</h4><a href="/#huong-dan">Hướng dẫn 4 bước</a><a href="/#hoi-dap">Câu hỏi thường gặp</a></div>
+      <div><h4>Minh bạch với con</h4><span>Không có chế độ ẩn</span><span>Con xem được dữ liệu của mình</span><span>Nhật ký “ai đã đổi gì”</span></div>
+      <div><h4>Quyền riêng tư</h4><span>Chỉ lưu tên miền cấp hai</span><span>Mã hóa AES-256-GCM</span><span>Tự xóa sau 90 ngày</span></div>
+    </div>
+    <div class="foot-note">
+      <span>© 2026 SafeAnchor — đồ án môn Mạng máy tính.</span>
+      <span>Công cụ đồng hành, không phải phần mềm theo dõi lén: con luôn thấy biểu tượng SafeAnchor trên máy.</span>
+    </div>
+  </div>
+</footer>
+<nav class="tabbar" aria-label="Điều hướng nhanh">
   <a href="/" {% if page == 'overview' %}aria-current="page"{% endif %}>{{ icon('house') }}Tổng quan</a>
   <a href="/family" {% if page in ('family', 'child') %}aria-current="page"{% endif %}>{{ icon('users') }}Gia đình</a>
   <a href="/children/new" {% if page == 'new' %}aria-current="page"{% endif %}>{{ icon('plus') }}Thêm con</a>
+  <a href="/#hoi-dap">{{ icon('circle-help') }}Hỏi đáp</a>
 </nav>
 </body>
 </html>

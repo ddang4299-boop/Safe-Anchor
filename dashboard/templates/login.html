@@ -2,31 +2,43 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light"><meta name="theme-color" content="#EEF2FF">
-  <title>Đăng nhập · OpenGuard Kids</title>
-  <link rel="icon" href="/static/mascots/khien_happy.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/static/css/ogk.css">
+  <meta name="color-scheme" content="light"><meta name="theme-color" content="#000056">
+  <title>Đăng nhập · SafeAnchor</title>
+  <link rel="icon" href="/static/brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="/static/brand/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/css/safeanchor.css">
 </head>
-<body class="parent">
-<div class="auth">
-  <div class="logo">
-    <div class="hero" aria-hidden="true"><img src="/static/mascots/sao_happy.svg" alt=""><img src="/static/mascots/tictac_happy.svg" alt=""><img src="/static/mascots/khien_happy.svg" alt=""></div>
-    <b>OpenGuard <span>Kids</span></b>
-  </div>
-  <div class="card">
-    <h1 style="font-size:1.6rem">Chào ba mẹ!</h1>
-    <p class="muted">Đăng nhập để xem con dùng máy thế nào và duyệt các yêu cầu xin thêm giờ.</p>
-    {% if error %}<div class="toast warn" role="alert">{{ icon('triangle-alert') }}<span>{{ error }}</span></div>{% endif %}
-    <form method="post" action="/auth/login" style="margin-top:16px">
-      <div class="field"><label for="email">Email</label>
-        <input id="email" name="email" type="email" autocomplete="username" required value="{{ email }}"></div>
-      <div class="field"><label for="password">Mật khẩu</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" required minlength="10"></div>
-      <button class="btn btn-lg btn-block" type="submit">{{ icon('key-round') }}Đăng nhập</button>
-    </form>
-    <p class="small muted center" style="margin:16px 0 0">Chưa có tài khoản? <a href="/auth/register">Tạo tài khoản gia đình</a></p>
-  </div>
-  <p class="tag">Công cụ đồng hành, không phải phần mềm theo dõi lén.</p>
-</div>
+<body class="parent auth-page">
+<main class="auth">
+  <section class="auth-art" aria-label="Giới thiệu SafeAnchor">
+    <a class="logo" href="/auth/login"><img src="/static/brand/mascot.png" alt="" width="38" height="42"><span>Safe<b>Anchor</b></span></a>
+    <div class="auth-copy">
+      <p class="eyebrow">Dành cho phụ huynh</p>
+      <h1>Đồng hành cùng con <span class="hl">trên máy tính</span></h1>
+      <ul class="auth-points">
+        <li>{{ icon('clock') }}Giới hạn giờ dùng máy theo ngày thường, cuối tuần và lịch tuần</li>
+        <li>{{ icon('hand') }}Con xin thêm giờ — ba mẹ đồng ý ngay trên điện thoại</li>
+        <li>{{ icon('eye') }}Không chạy ẩn: con luôn thấy biểu tượng và dữ liệu của mình</li>
+      </ul>
+    </div>
+    <img class="auth-mascot" src="/static/brand/mascot.png" alt="Mascot SafeAnchor">
+  </section>
+  <section class="auth-form">
+    <div class="panel">
+      <h2>Chào ba mẹ!</h2>
+      <p class="muted">Đăng nhập để xem con dùng máy thế nào và trả lời các yêu cầu xin thêm giờ.</p>
+      {% if error %}<div class="toast warn" role="alert">{{ icon('triangle-alert') }}<span>{{ error }}</span></div>{% endif %}
+      <form method="post" action="/auth/login">
+        <div class="field"><label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="username" required value="{{ email }}"></div>
+        <div class="field"><label for="password">Mật khẩu</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required minlength="10"></div>
+        <button class="btn btn-lg btn-block" type="submit">Đăng nhập{{ icon('arrow-right') }}</button>
+      </form>
+      <p class="small muted center alt">Chưa có tài khoản? <a href="/auth/register">Tạo tài khoản gia đình</a></p>
+    </div>
+    <p class="auth-note">Công cụ đồng hành, không phải phần mềm theo dõi lén.</p>
+  </section>
+</main>
 </body>
 </html>

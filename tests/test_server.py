@@ -257,6 +257,63 @@ def test_retention_job_deletes_old_events(client):
 
 
 # ------------------------------------------------------------------ render trang
+def test_overview_groups_details_by_category_and_has_guide_faq(client):
+    """Giao diện SafeAnchor: nhật ký chi tiết được GOM THEO NHÓM nội dung, nằm trong bảng chi tiết ẩn mặc định
+    (chỉ mở khi phụ huynh bấm thẻ nhóm); trang tổng quan có hướng dẫn 4 bước + hỏi đáp."""
+    _, cid = make_parent(client, "a@x.vn")
+    csrf = login(client, "a@x.vn")
+    dev = enroll(client, new_code(client, csrf, cid))
+    now = time.time()
+    events = [{"idem_key": str(uuid.uuid4()), "ts": now - i, "type": "domain_query", "subject": "khanacademy.org"} for i in range(3)]
+    events += [{"idem_key": str(uuid.uuid4()), "ts": now, "type": "blocked_domain", "subject": "roblox.com"}]
+    assert client.post("/api/events", json={"events": events}, headers=bearer(dev["access_token"])).json()["inserted"] == 4
+
+    from server import db as dbmod
+    from server.reports import child_report
+    from server.routers.dashboard import enrich_report
+    from server.policy_service import default_policy_body
+    with dbmod.SessionLocal() as db:
+        r = enrich_report(db, child_report(db, cid), default_policy_body(2018))
+    groups = {g["key"]: g for g in r["groups"]}
+    assert [g["key"] for g in r["groups"]][:6] == ["education", "entertainment", "games", "social", "uncategorized", "inappropriate"]
+    assert [d["name"] for d in groups["education"]["domains"]] == ["khanacademy.org"]
+    assert groups["games"]["blocked_n"] == 1 and groups["games"]["log"][0]["type"] == "blocked_domain"
+    assert len(groups["education"]["log"]) == 3 and not groups["social"]["log"]
+
+    html = client.get("/").text
+    edu = html.split(f'id="cd-{cid}-education"', 1)[1].split("</section>", 1)[0]
+    assert "khanacademy.org" in edu                                   # chi tiết nằm trong bảng của nhóm
+    assert f'href="#cd-{cid}-education"' in html and 'aria-expanded="false"' in html  # thẻ nhóm: đóng mặc định
+    assert 'id="huong-dan"' in html and 'id="hoi-dap"' in html and html.count('class="faq"') >= 8
+    assert "<title>Tổng quan · SafeAnchor</title>" in html
+
+
+def test_rename_child_from_profile_form(client):
+    """Đổi tên gọi của con: lưu (mã hóa), ghi nhật ký cũ → mới, báo "Đã lưu" ngay tại form; trang tổng quan đổi theo."""
+    _, cid = make_parent(client, "a@x.vn")
+    csrf = login(client, "a@x.vn")
+    page = client.get(f"/children/{cid}").text
+    assert 'href="#ho-so"' in page and 'id="ho-so"' in page          # có lối tắt tới form đổi tên
+    r = client.post(f"/children/{cid}/profile", data={"csrf_token": csrf, "nickname": "Bim", "self_pronoun": "em"},
+                    follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"].endswith("#ho-so")
+    page = client.get(r.headers["location"]).text
+    form = page.split('id="ho-so"', 1)[1].split("</form>", 1)[0]
+    assert "Đã lưu tên gọi mới" in form and 'value="Bim"' in form    # thông báo nằm ngay trong form
+    log = page.split('id="nhat-ky"', 1)[1]
+    assert "đã đổi tên gọi ở nhà của con" in log and "cách con tự xưng từ “con” thành “em”" in log
+    assert "Bim" in client.get("/").text
+    from server import db as dbmod
+    from server.models import AuditLog
+    with dbmod.SessionLocal() as db:   # tên gọi được mã hóa => không được nằm dạng rõ trong nhật ký
+        rows = db.query(AuditLog).filter(AuditLog.entity == "child", AuditLog.action == "update").all()
+    assert rows and all("Bin" not in (a.old_json + a.new_json) and "Bim" not in (a.old_json + a.new_json) for a in rows)
+    same = client.post(f"/children/{cid}/profile", data={"csrf_token": csrf, "nickname": "Bim", "self_pronoun": "em"})
+    assert "Không có gì thay đổi" in same.text
+    bad = client.post(f"/children/{cid}/profile", data={"nickname": "X"}, follow_redirects=False)
+    assert bad.status_code in (400, 403)                               # thiếu CSRF => từ chối
+
+
 def test_pages_render(client):
     _, cid = make_parent(client, "a@x.vn")
     csrf = login(client, "a@x.vn")

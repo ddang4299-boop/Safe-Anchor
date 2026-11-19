@@ -1,6 +1,8 @@
-# OpenGuard Kids (OGK)
+# SafeAnchor (tên mã đồ án: OpenGuard Kids — OGK)
 
 **"Công cụ đồng hành, không phải phần mềm theo dõi lén."** Ứng dụng hỗ trợ cha mẹ quản lý việc dùng máy tính của trẻ 6–11 tuổi — đồ án Mạng máy tính (CSC10008).
+
+> Tên hiển thị cho người dùng là **SafeAnchor**; tên nội bộ trong code (`OGK_*`, dịch vụ `OGKAgent`, thư mục `%ProgramData%\OGK`, luật firewall `OGK-`) giữ nguyên để không phá cài đặt.
 
 - **Máy trẻ (Windows):** OGK Agent — dịch vụ LocalSystem: DNS proxy lọc web `127.0.0.1:53`, chặn ứng dụng theo SHA-256, đếm giờ chống chỉnh đồng hồ; **OGK Kids** — ứng dụng khay cho trẻ (PySide6).
 - **Máy chủ:** OGK Server — FastAPI + SQLite (WAL) + SQLAlchemy.
@@ -36,7 +38,7 @@ HTTPS cho phòng lab: `python tools/gen_lab_ca.py --ip <IP server>` rồi `pytho
               local_cache, sync, ws_client, ipc, winsys, netguard, runtime, service) + tray/ (OGK Kids)
 /server       FastAPI: main, models, security, signing, policy_service, access (chống IDOR), reports,
               audit, jobs (xóa 90 ngày), seed, routers/{agent_api, auth, dashboard, kid}
-/dashboard    templates Jinja2 + static (CSS tokens, HTMX, font Nunito/Inter, mascot SVG)
+/dashboard    templates Jinja2 + static (safeanchor.css cho phụ huynh, ogk.css cho trang trẻ, HTMX, Chart.js, font Plus Jakarta Sans/Inter/Nunito, brand/ + mascot SVG)
 /tests        81 test: unit (DNS, đồng hồ, lịch, core, SHA-256, chữ ký, IPC...) + tích hợp (proxy thật, server)
 /tools        measure_dns, measure_resources, measure_policy_latency, gen_lab_ca, hash_exe, gen_data, gen_mascots
 /data         categories.csv (237 mục, 6 nhóm), test_domains.csv (50 cần chặn + 20 giáo dục + ...)

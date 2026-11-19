@@ -646,7 +646,7 @@ class MainWindow(QWidget):
         super().__init__()
         self.setObjectName("Main")
         self.setAttribute(Qt.WA_StyledBackground)
-        self.setWindowTitle("OGK Kids")
+        self.setWindowTitle("SafeAnchor")
         self.setWindowIcon(QIcon(str(ASSETS / "tictac_happy.svg")))
         self.resize(940, 660)
         self.bridge, self.open_request = bridge, open_request
@@ -660,13 +660,13 @@ class MainWindow(QWidget):
         nav.setSpacing(6)
         brand = QHBoxLayout()
         brand.addWidget(Mascot("khien", "happy", 44))
-        brand.addWidget(label("OGK Kids", "Brand"))
+        brand.addWidget(label("SafeAnchor", "Brand"))
         brand.addStretch(1)
         nav.addLayout(brand)
         nav.addSpacing(10)
         self.stack = QStackedWidget()
         self.nav_group = QButtonGroup(self)
-        for i, text in enumerate(["⏰  Hôm nay", "🧩  Đã khám phá gì", "📜  Ai đã đổi gì", "🛡️  Về OGK"]):
+        for i, text in enumerate(["⏰  Hôm nay", "🧩  Đã khám phá gì", "📜  Ai đã đổi gì", "🛡️  Về SafeAnchor"]):
             b = button(text, "Nav", lambda _=False, i=i: self.go(i))
             b.setCheckable(True)
             b.setMinimumWidth(200)
@@ -891,7 +891,7 @@ class MainWindow(QWidget):
         head, hl = self._tile("TileIndigo")
         row = QHBoxLayout()
         row.addWidget(Mascot("khien", "happy", 110))
-        row.addWidget(label("Tớ là Khiên Xanh — bạn đồng hành của OGK. Biểu tượng của tớ luôn ở góc màn hình.", "Title", True), 1)
+        row.addWidget(label("Tớ là Khiên Xanh — bạn đồng hành của SafeAnchor. Biểu tượng của tớ luôn ở góc màn hình.", "Title", True), 1)
         hl.addLayout(row)
         lay.addWidget(head)
         yes, yl = self._tile("TileMint")
@@ -915,7 +915,7 @@ class Onboarding(QDialog):
         super().__init__(None, Qt.WindowStaysOnTopHint)
         self.setObjectName("Dialog")
         self.setAttribute(Qt.WA_StyledBackground)
-        self.setWindowTitle("Làm quen với OGK")
+        self.setWindowTitle("Làm quen với SafeAnchor")
         self.resize(620, 400)
         con = profile.get("nickname", "bạn")
         call = profile.get("guardian_call", "Ba Mẹ")
@@ -977,7 +977,7 @@ class TrayApp:
         self.toast = Toast()
         self.tray = QSystemTrayIcon(QIcon(str(ASSETS / "tictac_happy.svg")))
         menu = QMenu()
-        for text, fn in (("Mở OGK Kids", self.open_main), ("🙋 Xin thêm giờ", self.open_request),
+        for text, fn in (("Mở SafeAnchor", self.open_main), ("🙋 Xin thêm giờ", self.open_request),
                          ("🧩 Hôm nay mình đã dùng gì", lambda: self.open_main(1)),
                          ("📜 Ai đã đổi gì", lambda: self.open_main(2))):
             a = QAction(text, menu)
@@ -986,7 +986,7 @@ class TrayApp:
         # Không có mục "Thoát": Tray là cam kết minh bạch, luôn hiện (trẻ tắt thì dịch vụ mở lại).
         self.tray.setContextMenu(menu)
         self.tray.activated.connect(lambda reason: self.open_main() if reason == QSystemTrayIcon.Trigger else None)
-        self.tray.setToolTip("OGK Kids")
+        self.tray.setToolTip("SafeAnchor")
         self.tray.show()
         if show_pill:
             scr = QApplication.primaryScreen().availableGeometry()
@@ -1020,13 +1020,13 @@ class TrayApp:
         if st is None:
             self.pill.label.setText("🔌 Đang kết nối…")
             self.pill.sub.setText("")
-            self.tray.setToolTip("OGK Kids — đang kết nối dịch vụ")
+            self.tray.setToolTip("SafeAnchor — đang kết nối dịch vụ")
             return
         self.status = st
         prof = st.get("profile", {})
         self.main._profile = prof
         self.pill.update_status(st)
-        self.tray.setToolTip(f"OGK Kids — {V.format_remaining(st.get('remaining_sec', 0))}")
+        self.tray.setToolTip(f"SafeAnchor — {V.format_remaining(st.get('remaining_sec', 0))}")
         self.main.update_today(st)
         if not self.onboarded and not self.bridge.demo:
             self.onboarded = True
@@ -1075,7 +1075,7 @@ def demo_call(op: str, **kw) -> dict:
                                       "top_domains": [{"name": "khanacademy.org"}, {"name": "olm.vn"}, {"name": "youtube.com"}]}}
     if op == "get_audit":
         return {"ok": True, "audit": {"items": [{"when": "hôm qua, 20:15", "lines": ["Mẹ đã đổi giờ dùng cuối tuần từ 150 phút thành 120 phút"]},
-                                                {"when": "17/11, 08:02", "lines": ["Mẹ đã tạo mã ghép máy tính (ba mẹ đồng ý sử dụng OGK)"]}]}}
+                                                {"when": "17/11, 08:02", "lines": ["Mẹ đã tạo mã ghép máy tính (ba mẹ đồng ý sử dụng SafeAnchor)"]}]}}
     if op == "request_more_time":
         return {"ok": True, "sent": True, "request_id": 1}
     return {"ok": True}
@@ -1135,7 +1135,7 @@ def main(argv=None) -> int:
     from agent.config import default_data_dir
     data_dir = Path(args.data_dir) if args.data_dir else default_data_dir(False)
     if not QSystemTrayIcon.isSystemTrayAvailable():
-        print("Không có khay hệ thống — OGK Kids không thể hiển thị biểu tượng.")
+        print("Không có khay hệ thống — SafeAnchor không thể hiển thị biểu tượng.")
     _tray = TrayApp(Bridge(data_dir, args.port, demo=args.demo))  # noqa: F841 (giữ tham chiếu)
     return app.exec()
 

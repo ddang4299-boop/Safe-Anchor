@@ -108,6 +108,19 @@ def humanize(e: AuditLog) -> list[str]:
             else:
                 lines.append(f"{who} đã đổi {label} từ {_fmt(old.get(path), unit)} thành {_fmt(nv, unit)}")
         return lines or [f"{who} đã cập nhật cài đặt"]
+    if key == "child.update" and "fields" in new:
+        # Tên gọi là dữ liệu mã hóa => nhật ký chỉ ghi "đã đổi tên gọi", KHÔNG lưu tên cũ/mới dạng rõ
+        lines = []
+        if "nickname" in new["fields"]:
+            lines.append(f"{who} đã đổi tên gọi ở nhà của con")
+        if "birth_year" in new["fields"]:
+            lines.append(f"{who} đã đổi năm sinh của con từ {old.get('birth_year')} thành {new.get('birth_year')}")
+        if "self_pronoun" in new["fields"]:
+            lines.append(f"{who} đã đổi cách con tự xưng từ “{old.get('self_pronoun', '')}” thành “{new.get('self_pronoun', '')}”")
+        if "avatar_key" in new["fields"]:
+            av = {"tictac": "Tíc-Tắc", "khien": "Khiên Xanh", "sao": "Sao Nhỏ"}
+            lines.append(f"{who} đã đổi bạn đồng hành từ {av.get(old.get('avatar_key'), '?')} thành {av.get(new.get('avatar_key'), '?')}")
+        return lines or [f"{who} đã lưu hồ sơ (không có gì thay đổi)"]
     simple = {
         "policy.create": f"{who} đã tạo cài đặt ban đầu",
         "command.lock_now": (f"{who} đã cho máy tạm nghỉ {new.get('minutes')} phút" if new.get("minutes")
@@ -117,7 +130,7 @@ def humanize(e: AuditLog) -> list[str]:
         "request.approve": f"{who} đã đồng ý cho thêm {new.get('minutes', '')} phút",
         "request.deny": f"{who} đã hẹn để lần sau",
         "request.create": f"Con đã xin thêm {new.get('minutes', '')} phút",
-        "pairing.create": f"{who} đã tạo mã ghép máy tính (ba mẹ đồng ý sử dụng OGK)",
+        "pairing.create": f"{who} đã tạo mã ghép máy tính (ba mẹ đồng ý sử dụng SafeAnchor)",
         "device.enroll": f"Máy tính đã được ghép với gia đình",
         "device.revoke": f"{who} đã gỡ một máy tính khỏi gia đình",
         "data.purge": f"{who} đã xóa toàn bộ dữ liệu hoạt động",

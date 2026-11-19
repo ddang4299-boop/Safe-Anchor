@@ -1,26 +1,37 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
+{% block title %}Thêm hồ sơ con · SafeAnchor{% endblock %}
 {% block content %}
-<a class="back" href="/family">{{ icon('arrow-left') }}Gia đình</a>
-<form class="card pad-lg" method="post" action="/children" style="max-width:620px">
-  <h1 style="font-size:1.7rem">Thêm hồ sơ của con</h1>
-  {% if error %}<div class="toast warn">{{ icon('triangle-alert') }}<span>{{ error }}</span></div>{% endif %}
-  <input type="hidden" name="csrf_token" value="{{ web.csrf }}">
-  <div class="grid2" style="margin-top:14px">
-    <div class="field"><label for="nickname">Tên gọi ở nhà</label><input id="nickname" name="nickname" type="text" maxlength="20" required placeholder="vd: Bin, Na, Cún">
-      <p class="hint">Không cần họ tên đầy đủ (tối thiểu hóa dữ liệu).</p></div>
-    <div class="field"><label for="birth_year">Năm sinh (chỉ năm)</label><input id="birth_year" name="birth_year" type="number" min="2005" max="2026" required value="2017"></div>
+<section class="band-hero page-head-band">
+  <div class="container">
+    <a class="back" href="/family">{{ icon('arrow-left') }}Gia đình</a>
+    <p class="eyebrow">Bước 1 / 4</p>
+    <h1>Thêm hồ sơ <span class="hl">của con</span></h1>
+    <p class="lead">Chỉ cần tên gọi ở nhà và năm sinh. Sau khi tạo, SafeAnchor đưa {{ web.actor_label|lower }} tới bước ghép máy tính của con.</p>
   </div>
-  <div class="field"><label for="self_pronoun">Con tự xưng là</label>
-    <select id="self_pronoun" name="self_pronoun"><option>con</option><option>em</option><option>mình</option><option>cháu</option></select></div>
-  <fieldset><legend>Bạn đồng hành của con</legend>
-    <div class="toggles">
-      {% for a, label in [('tictac', 'Tíc-Tắc'), ('khien', 'Khiên Xanh'), ('sao', 'Sao Nhỏ')] %}
-      <label class="toggle"><input type="radio" name="avatar_key" value="{{ a }}" {% if loop.first %}checked{% endif %}>
-        <span><img src="/static/mascots/{{ a }}_happy.svg" alt="" width="40" height="40">{{ label }}</span></label>
-      {% endfor %}
-    </div>
-  </fieldset>
-  <button class="btn btn-lg" type="submit">{{ icon('sparkles') }}Tạo hồ sơ</button>
-</form>
+</section>
+<section class="band">
+  <div class="container">
+    <form class="panel narrow" method="post" action="/children">
+      {% if error %}<div class="toast warn">{{ icon('triangle-alert') }}<span>{{ error }}</span></div>{% endif %}
+      <input type="hidden" name="csrf_token" value="{{ web.csrf }}">
+      <div class="grid2">
+        <div class="field"><label for="nickname">Tên gọi ở nhà</label><input id="nickname" name="nickname" type="text" maxlength="20" required placeholder="vd: Bin, Na, Cún">
+          <p class="hint">Không cần họ tên đầy đủ (tối thiểu hóa dữ liệu).</p></div>
+        <div class="field"><label for="birth_year">Năm sinh (chỉ năm)</label><input id="birth_year" name="birth_year" type="number" min="2005" max="2026" required value="2017"></div>
+      </div>
+      <div class="field"><label for="self_pronoun">Con tự xưng là</label>
+        <select id="self_pronoun" name="self_pronoun"><option>con</option><option>em</option><option>mình</option><option>cháu</option></select></div>
+      <fieldset><legend>Bạn đồng hành của con trên máy</legend>
+        <div class="toggles pick">
+          {% for a, label in [('tictac', 'Tíc-Tắc'), ('khien', 'Khiên Xanh'), ('sao', 'Sao Nhỏ')] %}
+          <label class="toggle"><input type="radio" name="avatar_key" value="{{ a }}" {% if loop.first %}checked{% endif %}>
+            <span><img src="/static/mascots/{{ a }}_happy.svg" alt="" width="40" height="40">{{ label }}</span></label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      <button class="btn btn-lg" type="submit">{{ icon('sparkles') }}Tạo hồ sơ</button>
+    </form>
+  </div>
+</section>
 {% endblock %}
