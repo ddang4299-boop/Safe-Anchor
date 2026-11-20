@@ -284,34 +284,46 @@ def test_overview_groups_details_by_category_and_has_guide_faq(client):
     edu = html.split(f'id="cd-{cid}-education"', 1)[1].split("</section>", 1)[0]
     assert "khanacademy.org" in edu                                   # chi tiết nằm trong bảng của nhóm
     assert f'href="#cd-{cid}-education"' in html and 'aria-expanded="false"' in html  # thẻ nhóm: đóng mặc định
-    assert 'id="huong-dan"' in html and 'id="hoi-dap"' in html and html.count('class="faq"') >= 8
     assert "<title>Tổng quan · SafeAnchor</title>" in html
+    # trang chính gọn: thiết bị đứng TRƯỚC nhóm nội dung; hướng dẫn + hỏi đáp chuyển sang trang phụ /huong-dan
+    assert html.index("Thiết bị · thao tác nhanh") < html.index(f'id="cat-{cid}"')
+    assert 'class="faq"' not in html and 'href="/huong-dan"' in html
+    help_html = client.get("/huong-dan").text
+    assert 'id="huong-dan"' in help_html and 'id="hoi-dap"' in help_html and help_html.count('class="faq"') >= 8
+    assert "Đã xong 2/4 bước" in help_html    # có hồ sơ + đã ghép máy; chưa tùy chỉnh chính sách, chưa tạo link
 
 
-def test_rename_child_from_profile_form(client):
-    """Đổi tên gọi của con: lưu (mã hóa), ghi nhật ký cũ → mới, báo "Đã lưu" ngay tại form; trang tổng quan đổi theo."""
+def test_profile_dialog_opens_from_child_name_and_saves(client):
+    """Bấm TÊN con => bảng "Hồ sơ của con" (tên, năm sinh, xưng hô, bạn đồng hành). Lưu: tên vẫn mã hóa, nhật ký
+    ghi trường đổi (không chép tên dạng rõ), quay về đúng trang đã mở bảng, có thông báo."""
     _, cid = make_parent(client, "a@x.vn")
     csrf = login(client, "a@x.vn")
-    page = client.get(f"/children/{cid}").text
-    assert 'href="#ho-so"' in page and 'id="ho-so"' in page          # có lối tắt tới form đổi tên
-    r = client.post(f"/children/{cid}/profile", data={"csrf_token": csrf, "nickname": "Bim", "self_pronoun": "em"},
-                    follow_redirects=False)
-    assert r.status_code == 303 and r.headers["location"].endswith("#ho-so")
+    for url in ("/", "/family", f"/children/{cid}"):
+        page = client.get(url).text
+        assert f'data-profile="{cid}"' in page and f'id="hs-{cid}"' in page, url   # tên con mở được bảng hồ sơ
+        assert "Đổi tên" not in page, url                                          # không còn nút "Đổi tên" lộ ra
+    r = client.post(f"/children/{cid}/profile", follow_redirects=False,
+                    data={"csrf_token": csrf, "back": "overview", "nickname": "Bim", "birth_year": "2016",
+                          "self_pronoun": "em", "avatar_key": "sao"})
+    assert r.status_code == 303 and r.headers["location"] == f"/?con={cid}&saved=profile"
     page = client.get(r.headers["location"]).text
-    form = page.split('id="ho-so"', 1)[1].split("</form>", 1)[0]
-    assert "Đã lưu tên gọi mới" in form and 'value="Bim"' in form    # thông báo nằm ngay trong form
-    log = page.split('id="nhat-ky"', 1)[1]
-    assert "đã đổi tên gọi ở nhà của con" in log and "cách con tự xưng từ “con” thành “em”" in log
-    assert "Bim" in client.get("/").text
+    assert "Đã lưu hồ sơ của con" in page and "Bim" in page and "sao_happy.svg" in page
+    log = client.get(f"/children/{cid}").text.split('id="nhat-ky"', 1)[1]
+    for line in ("đã đổi tên gọi ở nhà của con", "năm sinh của con từ 2018 thành 2016",
+                 "cách con tự xưng từ “con” thành “em”", "bạn đồng hành từ Tíc-Tắc thành Sao Nhỏ"):
+        assert line in log, line
     from server import db as dbmod
     from server.models import AuditLog
     with dbmod.SessionLocal() as db:   # tên gọi được mã hóa => không được nằm dạng rõ trong nhật ký
         rows = db.query(AuditLog).filter(AuditLog.entity == "child", AuditLog.action == "update").all()
-    assert rows and all("Bin" not in (a.old_json + a.new_json) and "Bim" not in (a.old_json + a.new_json) for a in rows)
-    same = client.post(f"/children/{cid}/profile", data={"csrf_token": csrf, "nickname": "Bim", "self_pronoun": "em"})
-    assert "Không có gì thay đổi" in same.text
-    bad = client.post(f"/children/{cid}/profile", data={"nickname": "X"}, follow_redirects=False)
-    assert bad.status_code in (400, 403)                               # thiếu CSRF => từ chối
+    assert rows and all("Bin" not in a.old_json + a.new_json and "Bim" not in a.old_json + a.new_json for a in rows)
+    same = client.post(f"/children/{cid}/profile", follow_redirects=False, data={"csrf_token": csrf, "back": "family",
+                       "nickname": "Bim", "birth_year": "2016", "self_pronoun": "em", "avatar_key": "sao"})
+    assert same.headers["location"] == "/family?saved=nochange"
+    bad = client.post(f"/children/{cid}/profile", follow_redirects=False, data={"csrf_token": csrf, "back": "//evil.example",
+                      "nickname": "Bim", "birth_year": "1990", "self_pronoun": "em", "avatar_key": "sao"})
+    assert bad.headers["location"] == f"/children/{cid}?saved=invalid"            # năm sinh sai; back lạ => trang của con
+    assert client.post(f"/children/{cid}/profile", data={"nickname": "X"}, follow_redirects=False).status_code in (400, 403)
 
 
 def test_pages_render(client):
@@ -321,7 +333,7 @@ def test_pages_render(client):
     client.post("/api/heartbeat", json={"policy_version": 1, "state": {"day": "2026-11-19", "used_sec": 1200,
                                         "by_category": {"games": 600}, "phase": "active", "remaining_sec": 3000}},
                 headers=bearer(dev["access_token"]))
-    for url in ["/", "/family", "/children/new", "/partials/overview", "/partials/requests"] + \
+    for url in ["/", "/family", "/huong-dan", "/children/new", "/partials/overview", "/partials/requests"] + \
                [f"/children/{cid}?tab={t}" for t in ("report", "time", "filter", "devices", "audit")]:
         r = client.get(url)
         assert r.status_code == 200, url
@@ -387,3 +399,22 @@ def test_new_kid_link_revokes_old_one_and_kid_page_has_no_block_count(client):
     assert client.get(f"/kid/{t1}").status_code == 404  # link cũ hết hiệu lực
     page = client.get(f"/kid/{t2}").text
     assert "Hôm nay của con" in page and "Huy hiệu" in page and "Bị chặn" not in page
+
+
+def test_kid_page_mounts_3d_mascot_with_self_hosted_three(client):
+    _, cid = make_parent(client, "a@x.vn")
+    csrf = login(client, "a@x.vn")
+    h = {"X-CSRF-Token": csrf, "HX-Request": "true"}
+    tok = re.search(r"/kid/([\w-]+)", client.post(f"/children/{cid}/kid-link", headers=h).text).group(1)
+    client.cookies.clear()
+    r = client.get(f"/kid/{tok}")
+    page = r.text
+    # sân khấu 3D + module tự host (CSP script-src 'self'), mascot SVG vẫn còn để dự phòng khi không có WebGL/JS
+    assert "data-m3d" in page and '<script type="module" src="/static/js/mascot3d.js">' in page
+    assert 'class="m m1"' in page
+    assert "script-src 'self'" in r.headers.get("content-security-policy", "")
+    # trình duyệt chỉ chạy ES module khi kiểu MIME là JavaScript (nosniff) — kể cả trên máy Windows map .js sai
+    for path in ("/static/js/mascot3d.js", "/static/js/vendor/three.module.min.js"):
+        js = client.get(path)
+        assert js.status_code == 200 and "javascript" in js.headers["content-type"]
+    assert "cdn" not in client.get("/static/js/mascot3d.js").text.lower()   # không tải gì từ Internet

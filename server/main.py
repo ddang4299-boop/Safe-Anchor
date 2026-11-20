@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import mimetypes
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
@@ -24,6 +25,11 @@ from .models import Base
 from .policy_service import load_categories_csv
 from .routers import agent_api, auth, dashboard, kid
 from .web import LoginRequired, render
+
+# Windows đọc kiểu MIME từ registry: có máy map .js -> text/plain, khi đó trình duyệt (nosniff) từ chối chạy
+# <script type="module"> (mascot 3D trang của trẻ). Cố định kiểu chuẩn thay vì phụ thuộc máy chạy server.
+mimetypes.add_type("text/javascript", ".js")
+mimetypes.add_type("text/javascript", ".mjs")
 
 log = logging.getLogger("ogk")
 

@@ -174,6 +174,9 @@ class Mascot(QSvgWidget):
             self.kind, self.mood = kind, mood
             self.load(str(ASSETS / f"{kind}_{mood}.svg"))
 
+    def set_context(self, **_) -> None:
+        """Mascot SVG không nói chuyện — giữ cùng API với Mascot3D."""
+
     def _blink(self) -> None:
         if self.mood in ("happy", "encourage", "remind") and self.isVisible():
             self.load(str(ASSETS / f"{self.kind}_blink.svg"))
@@ -181,6 +184,18 @@ class Mascot(QSvgWidget):
 
 
 def mascot(kind: str, mood: str, size: int) -> Mascot:
+    return Mascot(kind, mood, size)
+
+
+def live_mascot(kind: str, mood: str, size: int, hint: bool = False) -> QWidget:
+    """Mascot 3D tương tác (ảnh atlas render sẵn từ mô hình three.js — xem agent/tray/mascot3d.py).
+    Thiếu / hỏng ảnh atlas => quay về mascot SVG, Tray vẫn chạy bình thường."""
+    try:
+        from .mascot3d import Mascot3D
+        if Mascot3D.available():
+            return Mascot3D(kind, mood, size, hint=hint)
+    except Exception:
+        pass
     return Mascot(kind, mood, size)
 
 
@@ -673,7 +688,8 @@ class MainWindow(QWidget):
             self.nav_group.addButton(b, i)
             nav.addWidget(b)
         nav.addStretch(1)
-        nav.addWidget(Mascot("sao", "happy", 96), 0, Qt.AlignHCenter)
+        self.nav_sao = live_mascot("sao", "happy", 120)
+        nav.addWidget(self.nav_sao, 0, Qt.AlignHCenter)
         root.addLayout(nav)
         root.addWidget(self.stack, 1)
         self._build_today()
@@ -719,7 +735,7 @@ class MainWindow(QWidget):
         grid.setSpacing(14)
         big, bl = self._tile("TileIndigo")
         top = QHBoxLayout()
-        self.t_icon = Mascot("tictac", "happy", 112)
+        self.t_icon = live_mascot("tictac", "happy", 132, hint=True)
         top.addWidget(self.t_icon)
         col = QVBoxLayout()
         self.t_hello = label("Chào bạn!", "Title")
@@ -789,6 +805,7 @@ class MainWindow(QWidget):
         self.t_big.setText("Máy đang tạm nghỉ ☾" if locked else f"{V.time_icon(rem)} {V.format_remaining(rem, 'choi')}")
         self.t_big.setStyleSheet(f"font-size:{42 if mode == 'mam' else 36}px")
         self.t_icon.set("tictac", "sleepy" if locked else ("remind" if rem <= 600 else "happy"))
+        phase = st.get("phase")
         self.t_bar.set(rem, st.get("quota_min", 60))
         self.t_line.set(st.get("segments"), st.get("now_slot", 0))
         info = [f"Hôm nay {xung} đã dùng {st.get('used_sec', 0) // 60} / {st.get('quota_min', 0)} phút."]
@@ -803,6 +820,10 @@ class MainWindow(QWidget):
             info.append("📶 Máy đang mất mạng — mọi thứ vẫn hoạt động bình thường.")
         self.t_info.setText("  ".join(info))
         tiles = V.today_tiles(st, self._today_data())
+        # lời thoại khi trẻ chạm vào mascot: dùng đúng số liệu đang hiện trên màn hình
+        self.t_icon.set_context(profile=prof, remaining_sec=rem, phase=phase, study_min=tiles["study"])
+        self.nav_sao.set_context(profile=prof, study_min=tiles["study"])
+        self.about_khien.set_context(profile=prof)
         used = max(1, tiles["used"])
         self.t_study.setText(f"{tiles['study']} phút")
         self.t_study_bar.set(tiles["study"] / used)
@@ -890,7 +911,8 @@ class MainWindow(QWidget):
         _, lay = self._page()
         head, hl = self._tile("TileIndigo")
         row = QHBoxLayout()
-        row.addWidget(Mascot("khien", "happy", 110))
+        self.about_khien = live_mascot("khien", "happy", 130)
+        row.addWidget(self.about_khien)
         row.addWidget(label("Tớ là Khiên Xanh — bạn đồng hành của SafeAnchor. Biểu tượng của tớ luôn ở góc màn hình.", "Title", True), 1)
         hl.addLayout(row)
         lay.addWidget(head)
@@ -931,7 +953,8 @@ class Onboarding(QDialog):
         lay.setContentsMargins(30, 28, 30, 26)
         card, cl = MainWindow._tile("Card")
         row = QHBoxLayout()
-        self.icon = Mascot("tictac", "happy", 160)
+        self.icon = live_mascot("tictac", "happy", 176)
+        self.icon.set_context(profile=profile)
         self.text = label("", "Speech", True)
         self.text.setStyleSheet("font-size:19px")
         row.addWidget(self.icon)
@@ -946,9 +969,11 @@ class Onboarding(QDialog):
         btns.addWidget(self.dots)
         btns.addStretch(1)
         self.next = button("Tiếp →", None, self._next)
+        self.next.setDefault(True)        # Enter = "Tiếp" (mascot chỉ nhận Space/Enter khi được Tab tới)
         btns.addWidget(self.next)
         lay.addLayout(btns)
         self._show()
+        self.next.setFocus()
 
     def _show(self):
         m, mood, t = self.pages[self.i]

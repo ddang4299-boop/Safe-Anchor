@@ -137,27 +137,27 @@
     </div>
   </div>
   <div class="sb-stat">
-    <span class="sb-ic">{{ icon('clock') }}</span>
+    <span class="sb-head"><span class="sb-k">Hôm nay</span><span class="sb-ic">{{ icon('clock') }}</span></span>
     <span class="sb-num">{{ r.today_minutes|hm }}</span>
-    <span class="sb-label">Hôm nay{% if tq %} · giới hạn {{ tq|hm }}{% else %} · chưa đặt giới hạn{% endif %}</span>
+    <span class="sb-label">{% if tq %}giới hạn {{ tq|hm }}{% if r.today_minutes > tq %} · vượt {{ (r.today_minutes - tq)|hm }}{% else %} · còn {{ (tq - r.today_minutes)|hm }}{% endif %}{% else %}chưa đặt giới hạn{% endif %}</span>
     {% if tq %}<span class="sb-bar{% if r.today_minutes > tq %} over{% endif %}" role="img" aria-label="Đã dùng {{ r.today_minutes }} trên {{ tq }} phút"><i style="width:{{ [(100 * r.today_minutes / tq)|round|int, 100]|min }}%"></i></span>{% endif %}
   </div>
   <div class="sb-stat">
-    <span class="sb-ic">{{ icon('calendar-days') }}</span>
+    <span class="sb-head"><span class="sb-k">7 ngày</span><span class="sb-ic">{{ icon('calendar-days') }}</span></span>
     <span class="sb-num">{{ r.week_minutes|hm }}</span>
-    <span class="sb-label">7 ngày · trung bình {{ r.avg_day|hm }}/ngày</span>
+    <span class="sb-label">trung bình {{ r.avg_day|hm }}/ngày</span>
     <span class="sb-spark" aria-hidden="true">{% for d in r.daily %}<i class="{{ 'today' if loop.last }}{{ ' over' if d.quota and d.minutes > d.quota }}" style="--h:{{ [(100 * d.minutes / (r.max_day or 1))|round|int, 8]|max }}%"></i>{% endfor %}</span>
   </div>
   <div class="sb-stat">
-    <span class="sb-ic">{{ icon('graduation-cap') }}</span>
+    <span class="sb-head"><span class="sb-k">Học tập 7 ngày</span><span class="sb-ic mint">{{ icon('graduation-cap') }}</span></span>
     <span class="sb-num">{{ r.edu_share }}%</span>
-    <span class="sb-label">Học tập · {{ edu|hm }} trong 7 ngày</span>
+    <span class="sb-label">{{ edu|hm }} trên tổng {{ r.week_minutes|hm }}</span>
     <span class="sb-bar mint"><i style="width:{{ [r.edu_share, 100]|min }}%"></i></span>
   </div>
   <div class="sb-stat">
-    <span class="sb-ic">{{ icon('shield-check') }}</span>
-    <span class="sb-num">{{ r.blocked_total }}</span>
-    <span class="sb-label">Lần bị chặn · {{ r.blocked_web }} trang web, {{ r.blocked_app }} ứng dụng</span>
+    <span class="sb-head"><span class="sb-k">Bị chặn 7 ngày</span><span class="sb-ic pink">{{ icon('shield-check') }}</span></span>
+    <span class="sb-num">{{ r.blocked_total }}<small> lần</small></span>
+    <span class="sb-label">{{ r.blocked_web }} trang web · {{ r.blocked_app }} ứng dụng</span>
   </div>
 </div>
 {%- endmacro %}
@@ -171,7 +171,7 @@
   <div class="sec-head split">
     <div><p class="eyebrow">{{ icon('layout-grid') }}Con dành thời gian cho gì</p>
       <h2>7 ngày qua, {{ name }} đã <span class="hl">khám phá</span> những gì?</h2></div>
-    <p class="lead">Mặc định chỉ hiện con số tổng của từng nhóm. Bấm vào một thẻ — hoặc một lát trên biểu đồ tròn — để xem ứng dụng, trang web và nhật ký truy cập của nhóm đó.</p>
+    <p class="lead">Bấm vào một thẻ hoặc một lát biểu đồ tròn để xem ứng dụng, trang web và nhật ký của nhóm đó.</p>
   </div>
   <div class="cat-layout" id="cat-{{ kid_id }}">
     <div class="donut-card">
@@ -236,7 +236,7 @@
   <div class="sec-head split">
     <div><p class="eyebrow">{{ icon('chart-column') }}Thời lượng dùng máy</p>
       <h2>{{ name }} dùng máy <span class="hl">bao lâu</span> mỗi ngày?</h2></div>
-    <p class="lead">Cột cam là hôm nay. Đường đứt nét là giới hạn cho phép — ngày thường và cuối tuần có thể khác nhau, nên đường có bậc.</p>
+    <p class="lead">Cột cam là hôm nay; đường đứt nét là giới hạn cho phép (ngày thường và cuối tuần có thể khác nhau).</p>
   </div>
   <div class="chart-card">
     <div class="chart-head">
@@ -309,9 +309,9 @@
 {% macro device_section(kid_id, name, devices, full=false) -%}
 <div class="container">
   <div class="sec-head split">
-    <div><p class="eyebrow">{{ icon('laptop') }}Thiết bị</p>
+    <div><p class="eyebrow">{{ icon('laptop') }}Thiết bị · thao tác nhanh</p>
       <h2>Máy tính của {{ name }}, <span class="hl">theo thời gian thực</span></h2></div>
-    <p class="lead">Trạng thái tự cập nhật mỗi 10 giây. “Khóa khẩn cấp” có hiệu lực tức thì; lệnh gửi khi máy ngoại tuyến sẽ chạy ngay lúc máy kết nối lại.</p>
+    <p class="lead">Tự cập nhật mỗi 10 giây. Lệnh gửi khi máy ngoại tuyến sẽ chạy ngay lúc máy kết nối lại.</p>
   </div>
   <div class="dev-grid">
     {%- for d in devices %}{{ device_block(d, full) }}

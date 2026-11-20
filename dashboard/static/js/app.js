@@ -232,6 +232,24 @@
     if (next) { e.preventDefault(); selectKid(next.getAttribute("data-kid-tab"), true); }
   });
 
+  // ---- bảng "Hồ sơ của con": mở khi bấm vào TÊN con (<dialog>.showModal: khóa nền, Esc để đóng) ----
+  function openProfile(id, trigger) {
+    var d = document.getElementById("hs-" + id);
+    if (!d || typeof d.showModal !== "function") return false;   // trình duyệt cũ: để liên kết #hs-<id> + :target lo
+    d._trigger = trigger || null;
+    if (!d.open) d.showModal();
+    var first = d.querySelector("input[type=text]");
+    if (first) { first.focus(); first.select(); }
+    return true;
+  }
+  document.addEventListener("close", function (e) {   // sự kiện close không nổi bọt => bắt ở pha capture
+    var d = e.target;
+    if (d.matches && d.matches("dialog.modal")) {
+      if (location.hash === "#" + d.id) history.replaceState(null, "", location.pathname + location.search);
+      if (d._trigger) d._trigger.focus();
+    }
+  }, true);
+
   // Đếm ngược mã ghép 10 phút
   function initCountdowns(root) {
     root.querySelectorAll("[data-countdown]:not([data-started])").forEach(function (el) {
@@ -257,6 +275,18 @@
       if (selectKid(tab.getAttribute("data-kid-tab"), false)) e.preventDefault();
       return;
     }
+    var prof = e.target.closest("[data-profile]");
+    if (prof && plain) {
+      if (openProfile(prof.getAttribute("data-profile"), prof)) e.preventDefault();
+      return;
+    }
+    var shut = e.target.closest("[data-dialog-close]");
+    if (shut) {
+      var dlg = shut.closest("dialog");
+      if (dlg && dlg.open) { e.preventDefault(); dlg.close(); }
+      return;
+    }
+    if (e.target.matches && e.target.matches("dialog.modal[open]")) { e.target.close(); return; }  // bấm ra nền mờ
     var cat = e.target.closest("[data-cat]");
     if (cat && plain) {
       var p = cat.getAttribute("data-cat").split(":");
@@ -284,11 +314,46 @@
     if (e.target.matches("[data-autosubmit]")) e.target.form.submit();
   });
 
+  // ---- mascot thương hiệu: nghiêng 2.5D theo con trỏ + nảy khi chạm (chỉ nghiêng ẢNH PHẲNG, không dựng 3D) ----
+  // Dùng thuộc tính rotate/scale riêng (không phải transform) => cộng dồn với hoạt ảnh "float" đang chạy.
+  function initTilt(root) {
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    root.querySelectorAll("img[data-tilt]:not([data-tilt-on])").forEach(function (img) {
+      img.setAttribute("data-tilt-on", "");
+      var area = img.closest(".hero-art") || img.parentElement, raf = 0, px = 0, py = 0;
+      function apply() {
+        raf = 0;
+        var r = img.getBoundingClientRect();
+        var nx = Math.max(-1, Math.min(1, (px - (r.left + r.width / 2)) / (r.width * 0.9)));
+        var ny = Math.max(-1, Math.min(1, (py - (r.top + r.height / 2)) / (r.height * 0.9)));
+        var rx = -ny * 10, ry = nx * 14, ang = Math.sqrt(rx * rx + ry * ry);
+        img.style.rotate = ang < 0.3 ? "none" : rx.toFixed(2) + " " + ry.toFixed(2) + " 0 " + ang.toFixed(2) + "deg";
+      }
+      area.addEventListener("pointermove", function (e) {
+        if (e.pointerType === "touch") return;
+        px = e.clientX; py = e.clientY;
+        if (!raf) raf = requestAnimationFrame(apply);
+      });
+      area.addEventListener("pointerleave", function () { img.style.rotate = "none"; });
+      img.addEventListener("click", function () {
+        img.classList.remove("pop"); void img.offsetWidth;   // chạm liên tiếp => chạy lại hoạt ảnh nảy
+        img.classList.add("pop");
+      });
+      img.addEventListener("animationend", function (e) { if (e.animationName === "pop") img.classList.remove("pop"); });
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    initTilt(document);
     initCountdowns(document);
     initCharts(document, true);
     var m = /^#cd-(\d+)-([a-z]+)$/.exec(location.hash);   // mở sẵn nhóm khi tải trang với #cd-<con>-<nhóm>
     if (m) openCat(m[1], m[2], false);
+    var hs = /^#hs-(\d+)$/.exec(location.hash);            // mở sẵn hồ sơ khi tải trang với #hs-<con>
+    if (hs) openProfile(hs[1], null);
+    if (/[?&]saved=/.test(location.search)) {              // đã hiện thông báo => bỏ ?saved khỏi URL (tải lại không hiện lại)
+      try { history.replaceState(null, "", location.pathname + location.search.replace(/[?&]saved=[a-z]+/, "").replace(/^&/, "?") + location.hash); } catch (e) { /* bỏ qua */ }
+    }
   });
   document.addEventListener("htmx:afterSwap", function (e) { initCountdowns(e.target); initCharts(e.target, false); });
   // Lỗi mạng/HTTP: hiện thông báo thân thiện thay vì im lặng

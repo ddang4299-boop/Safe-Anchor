@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
-{% from "_macros.html" import statbar, status_pill, cat_explorer, usage_section, device_block, chart, bars %}
-{% block title %}{{ child.nickname }} · SafeAnchor{% endblock %}
-{% block head %}<script src="/static/js/schedule.js" defer></script>{% endblock %}
+{% from "_macros.html" import statbar, status_pill, cat_explorer, usage_section, device_block, chart, bars, kid_name, profile_dialog %}
+{% block title %}{{ child.nickname }} · SafeAnchor{{ profile_dialog(child, web.csrf, 'child') }}
+{% endblock %}
+{% block head %}<script src="/static/js/schedule.js" defer></script>{{ profile_dialog(child, web.csrf, 'child') }}
+{% endblock %}
 {% block content %}
 {% set CAT_ICON = {"education": "graduation-cap", "entertainment": "clapperboard", "social": "message-circle", "games": "gamepad-2",
                    "inappropriate": "eye-off", "uncategorized": "puzzle"} %}
@@ -14,13 +16,12 @@
     <div class="hero-copy">
       <a class="back" href="/?con={{ child.id }}">{{ icon('arrow-left') }}Tổng quan</a>
       <p class="eyebrow">Hồ sơ của con · {{ child.age }} tuổi · nhóm {{ child.group }}</p>
-      <h1 id="kid-title">Cài đặt cho <span class="hl">{{ child.nickname }}</span></h1>
+      <h1 id="kid-title">Cài đặt cho <span class="hl">{{ kid_name(child) }}</span></h1>
       <p class="lead">Mỗi lần lưu tạo một phiên bản chính sách mới; máy của con cập nhật trong vài giây và thay đổi được ghi vào nhật ký mà {{ child.nickname }} cũng xem được.</p>
       <div class="dev-pills">{% for d in devices if not d.revoked %}{{ status_pill(d) }}{% else %}<span class="status"><span class="dot"></span>Chưa ghép máy</span>{% endfor %}</div>
       <div class="hero-cta">
         <a class="btn btn-lg" href="#chinh-sach">{{ icon('sliders-horizontal') }}Chỉnh giờ dùng máy</a>
         <a class="link-arrow" href="#bao-cao">Xem báo cáo 7 ngày{{ icon('arrow-right') }}</a>
-        <a class="link-arrow" href="#ho-so">Đổi tên gọi{{ icon('arrow-right') }}</a>
       </div>
       {% if child.alerts %}<div class="toast warn">{{ icon('triangle-alert') }}<span>Có {{ child.alerts }} cảnh báo đồng hồ máy bị chỉnh trong 24 giờ qua — thời gian vẫn được đếm đúng nhờ đồng hồ đơn điệu.</span></div>{% endif %}
     </div>
@@ -47,7 +48,6 @@
     <a href="#bao-cao">{{ icon('chart-column') }}Báo cáo</a>
     <a href="#thiet-bi">{{ icon('laptop') }}Thiết bị</a>
     <a href="#ghep-thiet-bi">{{ icon('link') }}Ghép máy &amp; link</a>
-    <a href="#ho-so">{{ icon('smile') }}Tên &amp; hồ sơ</a>
     <a href="#nhat-ky">{{ icon('history') }}Nhật ký</a>
     <a href="#xoa-du-lieu">{{ icon('trash-2') }}Xóa dữ liệu</a>
   </div>
@@ -177,23 +177,12 @@
 <section class="band" id="nhat-ky" aria-labelledby="log-title">
   <div class="container">
     <div class="sec-head split">
-      <div><p class="eyebrow">{{ icon('smile') }}Hồ sơ &amp; minh bạch</p>
-        <h2 id="log-title">Tên gọi của {{ child.nickname }} và <span class="hl">ai đã đổi gì</span></h2></div>
-      <p class="lead">Đổi tên gọi ở nhà hoặc cách con tự xưng ở thẻ bên trái. Mọi thay đổi — kể cả đổi tên — đều được ghi lại kèm người thực hiện và giá trị cũ → mới, và con cũng xem được.</p>
+      <div><p class="eyebrow">{{ icon('history') }}Minh bạch</p>
+        <h2 id="log-title">Ai đã đổi gì — <span class="hl">con cũng xem được</span></h2></div>
+      <p class="lead">Mọi thay đổi chính sách, hồ sơ, lệnh khóa/mở và yêu cầu xin giờ đều được ghi lại kèm người thực hiện. Muốn sửa tên, tuổi hay bạn đồng hành của con, bấm vào tên con ở đầu trang.</p>
     </div>
     <div class="form-grid">
-      <form class="panel s4" id="ho-so" method="post" action="/children/{{ child.id }}/profile">
-        <div class="panel-head"><span class="tile sun">{{ icon('smile') }}</span><h3>Tên gọi &amp; cách xưng hô</h3></div>
-        {% if msg %}{% set bad = msg.startswith("Tên gọi không") %}<div class="toast {{ 'warn' if bad else 'ok' }}" role="status">{{ icon('triangle-alert' if bad else 'circle-check') }}<span>{{ msg }}</span></div>{% endif %}
-        <input type="hidden" name="csrf_token" value="{{ web.csrf }}">
-        <div class="field"><label for="nn">Tên gọi ở nhà (≤ 20 ký tự)</label><input id="nn" name="nickname" type="text" maxlength="20" required value="{{ child.nickname }}"></div>
-        <div class="field"><label for="sp">Con tự xưng là</label>
-          <select id="sp" name="self_pronoun">{% for p in ('con', 'em', 'mình', 'cháu') %}<option {% if p == child_obj.self_pronoun %}selected{% endif %}>{{ p }}</option>{% endfor %}</select></div>
-        <p class="hint">Tên gọi được mã hóa AES-256-GCM khi lưu, chỉ dùng để mascot gọi con thân mật.</p>
-        <button class="btn btn-block" type="submit">{{ icon('check') }}Lưu tên gọi</button>
-      </form>
-
-      <section class="panel s8">
+      <section class="panel s12">
         <div class="panel-head"><span class="tile grape">{{ icon('history') }}</span><h3>Nhật ký thay đổi</h3><span class="tag">{{ icon('eye') }}Con cũng xem được</span></div>
         {% macro tl_item(item) %}<li><span class="tl-dot"></span><div class="tl-body"><div class="tl-meta"><span class="who-badge">{{ item.who }}</span><time>{{ item.e.ts|hhmm }}</time>{% if item.e.ip %}<span class="mono">IP {{ item.e.ip }}</span>{% endif %}</div>{% for l in item.lines %}<p>{{ l }}</p>{% endfor %}</div></li>{% endmacro %}
         <ol class="timeline">
@@ -227,4 +216,5 @@
     </div>
   </div>
 </section>
+{{ profile_dialog(child, web.csrf, 'child') }}
 {% endblock %}

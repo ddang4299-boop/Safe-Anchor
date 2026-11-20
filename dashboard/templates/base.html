@@ -21,8 +21,8 @@
 <div class="util">
   <div class="container">
     <span class="util-live"><i class="dot"></i>Trạng thái máy của con tự cập nhật mỗi 10 giây</span>
-    <a class="util-link" href="/#huong-dan">Hướng dẫn nhanh</a>
-    <a class="util-link" href="/#hoi-dap">Hỏi đáp</a>
+    <a class="util-link" href="/huong-dan">Hướng dẫn</a>
+    <a class="util-link" href="/huong-dan#hoi-dap">Hỏi đáp</a>
     {% if web.guardians|length > 1 %}
     <form class="acting" method="post" action="/auth/as-guardian">
       <input type="hidden" name="csrf_token" value="{{ web.csrf }}">
@@ -45,37 +45,35 @@
     <nav class="nav-links" aria-label="Điều hướng chính">
       <a href="/" {% if page == 'overview' %}aria-current="page"{% endif %}>Tổng quan</a>
       <a href="/family" {% if page in ('family', 'child') %}aria-current="page"{% endif %}>Gia đình</a>
-      <a href="/#huong-dan">Hướng dẫn</a>
-      <a href="/#hoi-dap">Câu hỏi thường gặp</a>
+      <a href="/huong-dan" {% if page == 'help' %}aria-current="page"{% endif %}>Hướng dẫn &amp; hỏi đáp</a>
     </nav>
     <a class="btn btn-sm nav-cta" href="/children/new">{{ icon('plus') }}Thêm hồ sơ con</a>
   </div>
 </header>
+{# Thông báo sau khi lưu (?saved=...): chỉ nhận mã cố định => không phản chiếu chữ tùy ý từ URL #}
+{% set saved = request.query_params.get('saved') %}
+{% set FLASH = {"profile": ("ok", "circle-check", "Đã lưu hồ sơ của con. Máy của con sẽ cập nhật trong vài giây."),
+                "nochange": ("ok", "circle-check", "Hồ sơ không có gì thay đổi."),
+                "invalid": ("warn", "triangle-alert", "Chưa lưu: tên gọi không được để trống và năm sinh phải từ 2005 đến nay.")} %}
+{% if saved in FLASH %}{% set f = FLASH[saved] %}<div class="flash toast {{ f[0] }}" role="status">{{ icon(f[1]) }}<span>{{ f[2] }}</span></div>{% endif %}
 <main id="main">{% block content %}{% endblock %}</main>
-<footer class="site-foot">
-  <div class="container">
-    <div class="foot-top">
-      <a class="logo" href="/"><img src="/static/brand/mascot.png" alt="" width="38" height="42"><span>Safe<b>Anchor</b></span></a>
-      <p class="foot-tag">Neo giữ thời gian màn hình <span class="hl">vừa vặn cho con</span></p>
-      <a class="btn btn-sm" href="/children/new">{{ icon('plus') }}Thêm hồ sơ con</a>
-    </div>
-    <div class="foot-cols">
-      <div><h4>Bảng điều khiển</h4><a href="/">Tổng quan</a><a href="/family">Gia đình</a><a href="/children/new">Thêm hồ sơ con</a></div>
-      <div><h4>Hỗ trợ phụ huynh</h4><a href="/#huong-dan">Hướng dẫn 4 bước</a><a href="/#hoi-dap">Câu hỏi thường gặp</a></div>
-      <div><h4>Minh bạch với con</h4><span>Không có chế độ ẩn</span><span>Con xem được dữ liệu của mình</span><span>Nhật ký “ai đã đổi gì”</span></div>
-      <div><h4>Quyền riêng tư</h4><span>Chỉ lưu tên miền cấp hai</span><span>Mã hóa AES-256-GCM</span><span>Tự xóa sau 90 ngày</span></div>
-    </div>
-    <div class="foot-note">
-      <span>© 2026 SafeAnchor — đồ án môn Mạng máy tính.</span>
-      <span>Công cụ đồng hành, không phải phần mềm theo dõi lén: con luôn thấy biểu tượng SafeAnchor trên máy.</span>
-    </div>
+<footer class="site-foot compact">
+  <div class="container foot-row">
+    <a class="logo" href="/"><img src="/static/brand/mascot.png" alt="" width="38" height="42"><span>Safe<b>Anchor</b></span></a>
+    <nav class="foot-links" aria-label="Liên kết chân trang">
+      <a href="/">Tổng quan</a><a href="/family">Gia đình</a><a href="/huong-dan">Hướng dẫn &amp; hỏi đáp</a><a href="/children/new">Thêm hồ sơ con</a>
+    </nav>
+  </div>
+  <div class="container foot-note">
+    <span>© 2026 SafeAnchor — đồ án môn Mạng máy tính.</span>
+    <span>Công cụ đồng hành, không phải phần mềm theo dõi lén: con luôn thấy biểu tượng SafeAnchor · dữ liệu tự xóa sau 90 ngày.</span>
   </div>
 </footer>
 <nav class="tabbar" aria-label="Điều hướng nhanh">
   <a href="/" {% if page == 'overview' %}aria-current="page"{% endif %}>{{ icon('house') }}Tổng quan</a>
   <a href="/family" {% if page in ('family', 'child') %}aria-current="page"{% endif %}>{{ icon('users') }}Gia đình</a>
   <a href="/children/new" {% if page == 'new' %}aria-current="page"{% endif %}>{{ icon('plus') }}Thêm con</a>
-  <a href="/#hoi-dap">{{ icon('circle-help') }}Hỏi đáp</a>
+  <a href="/huong-dan" {% if page == 'help' %}aria-current="page"{% endif %}>{{ icon('circle-help') }}Hướng dẫn</a>
 </nav>
 </body>
 </html>

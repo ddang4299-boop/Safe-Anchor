@@ -1,7 +1,7 @@
-{# Phần nội dung theo TỪNG con trên trang tổng quan (chỉ hiện con đang chọn trên thanh hồ sơ):
+{# Phần nội dung theo TỪNG con trên trang tổng quan (chỉ hiện con đang chọn trên thanh hồ sơ), theo thứ tự ưu tiên:
+     dải navy   — THIẾT BỊ theo thời gian thực + nút thao tác nhanh (lên cao để không phải cuộn sâu trên điện thoại)
      dải trắng  — "Con dành thời gian cho gì": 6 thẻ pastel + biểu đồ tròn; chi tiết chỉ mở khi bấm
      dải xám    — thời lượng 7 ngày (đường giới hạn đứt nét) + 4 con số
-     dải navy   — thiết bị theo thời gian thực
    Dải số liệu nổi (statbar) nằm trong overview.html (#kid-top-<id>) vì nó chồng lên phần mở đầu. #}
 {% from "_icons.html" import icon %}
 {% from "_macros.html" import cat_explorer, usage_section, device_section %}
@@ -9,16 +9,16 @@
 {% set r = kid.report %}
 <div class="kid-panel" id="kid-{{ kid.id }}" data-kid-panel="{{ kid.id }}" role="tabpanel" aria-labelledby="tab-{{ kid.id }}" {% if kid.id != selected %}hidden{% endif %}>
   {% if kid.alerts %}<div class="container"><div class="toast warn alert">{{ icon('triangle-alert') }}<span>Có {{ kid.alerts }} cảnh báo đồng hồ máy của {{ kid.nickname }} bị chỉnh trong 24 giờ qua — thời gian vẫn được đếm đúng nhờ đồng hồ đơn điệu.</span></div></div>{% endif %}
-  <section class="band" aria-label="Nhóm nội dung của {{ kid.nickname }}">{{ cat_explorer(kid.id, kid.nickname, r) }}</section>
-  <section class="band band-grey" aria-label="Thời lượng dùng máy của {{ kid.nickname }}">{{ usage_section(kid.nickname, r) }}</section>
-  <section class="band band-navy" aria-label="Thiết bị của {{ kid.nickname }}">{{ device_section(kid.id, kid.nickname, kid.devices) }}</section>
+  <section class="band band-navy compact" aria-label="Thiết bị của {{ kid.nickname }}">{{ device_section(kid.id, kid.nickname, kid.devices) }}</section>
+  <section class="band compact" aria-label="Nhóm nội dung của {{ kid.nickname }}">{{ cat_explorer(kid.id, kid.nickname, r) }}</section>
+  <section class="band band-grey compact" aria-label="Thời lượng dùng máy của {{ kid.nickname }}">{{ usage_section(kid.nickname, r) }}</section>
 </div>
 {% else %}
 <section class="band">
   <div class="container">
     <div class="empty-card big"><img src="/static/brand/mascot.png" alt="">
       <div><p class="eyebrow">Chưa có hồ sơ</p><h2>Thêm hồ sơ đầu tiên cho con</h2>
-        <p>Tạo hồ sơ, rồi ghép máy tính của con bằng mã 8 ký tự. Các bước chi tiết ở phần hướng dẫn ngay bên dưới.</p>
+        <p>Tạo hồ sơ, rồi ghép máy tính của con bằng mã 8 ký tự. Các bước chi tiết có ở trang <a href="/huong-dan">Hướng dẫn &amp; hỏi đáp</a>.</p>
         <a class="btn btn-lg" href="/children/new">{{ icon('plus') }}Thêm hồ sơ con</a></div></div>
   </div>
 </section>

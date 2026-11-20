@@ -3,26 +3,21 @@
 {% from "_macros.html" import kid_state, statbar, profile_dialog %}
 {% block title %}Tổng quan · SafeAnchor{% endblock %}
 {% block content %}
-{# Bố cục theo ảnh mẫu newlayout.png (trang dài, các dải băng toàn chiều ngang):
-   mở đầu (lời chào + chọn hồ sơ + mascot) → dải số liệu nổi → yêu cầu của các con → [theo từng con: nhóm nội dung,
-   thời lượng 7 ngày, thiết bị (dải navy)] → hướng dẫn nhanh 4 bước → hỏi đáp → lời kêu gọi (dải navy). #}
+{# Trang tổng quan GỌN theo thứ tự thao tác hằng ngày (bố cục, màu giữ theo ảnh mẫu newlayout.png):
+   lời chào + chọn hồ sơ → số liệu nhanh → YÊU CẦU của các con → THIẾT BỊ + nút thao tác nhanh → nhóm nội dung
+   → thời lượng 7 ngày → dải thu gọn dẫn sang trang phụ /huong-dan (hướng dẫn 4 bước + hỏi đáp). #}
 {% set n_req = requests|length %}
 {% set ns = namespace(over=none, devs=0, online=0) %}
 {% for k in kids %}{% set ns.devs = ns.devs + k.devices|length %}{% set ns.online = ns.online + (k.devices|selectattr('status', 'in', ['active', 'grace', 'locked'])|list|length) %}
   {%- if not ns.over and k.report.today_quota and k.report.today_minutes > k.report.today_quota %}{% set ns.over = k.nickname %}{% endif %}{% endfor %}
 
-<section class="band-hero hero" aria-labelledby="hero-title">
+<section class="band-hero hero compact" aria-labelledby="hero-title">
   <div class="container hero-grid">
     <div class="hero-copy">
-      <p class="eyebrow">{{ today_text }} · Bảng điều khiển gia đình</p>
+      <p class="eyebrow">{{ today_text }}<span class="eb-extra"> · Bảng điều khiển gia đình</span></p>
       <h1 id="hero-title">Chào {{ web.actor_label }}!<br><span class="hl">{% if n_req %}Có {{ n_req }} yêu cầu đang chờ{% elif ns.over %}{{ ns.over }} đã quá giờ hôm nay{% elif kids %}Các con đang dùng máy vừa đủ{% else %}Bắt đầu chỉ với 4 bước{% endif %}</span></h1>
-      <p class="lead">{% if kids %}SafeAnchor đang đồng hành cùng {{ kids|length }} con trên {{ ns.devs }} máy tính. Con số tổng nằm ngay bên dưới; khi muốn xem kỹ, {{ web.actor_label|lower }} bấm vào từng nhóm nội dung.{% else %}Tạo hồ sơ cho con, ghép máy tính bằng mã 8 ký tự, rồi đặt giờ dùng máy phù hợp. Mọi quy tắc con đều thấy rõ — không có gì chạy lén.{% endif %}</p>
-      <div class="hero-cta">
-        {% if kids %}<a class="btn btn-lg" href="#hoat-dong">Xem hoạt động hôm nay{{ icon('arrow-right') }}</a>
-        {% else %}<a class="btn btn-lg" href="/children/new">{{ icon('plus') }}Thêm hồ sơ con</a>{% endif %}
-        <a class="link-arrow" href="#huong-dan">Hướng dẫn nhanh{{ icon('arrow-right') }}</a>
-      </div>
       {% if kids %}
+      <p class="lead">SafeAnchor đang đồng hành cùng {{ kids|length }} con trên {{ ns.devs }} máy tính · {{ ns.online }} máy đang kết nối.</p>
       {# Thanh chọn hồ sơ (WAI-ARIA tabs). Mỗi tab là liên kết thật (?con=<id>) => tắt JS vẫn dùng được;
          app.js chặn lại để đổi nội dung tức thì (không tải trang) và hỗ trợ phím ←/→/Home/End. #}
       <div class="switcher">
@@ -38,12 +33,16 @@
           </a>
           {% endfor %}
         </div>
-        <a class="kid-tab add" href="/children/new">{{ icon('plus') }}<span>Thêm con</span></a>
+        <a class="kid-tab add" href="/children/new" title="Thêm hồ sơ con">{{ icon('plus') }}<span>Thêm con</span></a>
       </div>
+      {% else %}
+      <p class="lead">Tạo hồ sơ cho con, ghép máy tính bằng mã 8 ký tự, rồi đặt giờ dùng máy phù hợp. Mọi quy tắc con đều thấy rõ — không có gì chạy lén.</p>
+      <div class="hero-cta"><a class="btn btn-lg" href="/children/new">{{ icon('plus') }}Thêm hồ sơ con</a>
+        <a class="link-arrow" href="/huong-dan">Xem hướng dẫn 4 bước{{ icon('arrow-right') }}</a></div>
       {% endif %}
     </div>
 
-    {# Thẻ chào mừng: mascot SafeAnchor trên "chồng sách", dải ruy băng xanh + mặt trời vàng (như ảnh mẫu) #}
+    {# Thẻ chào mừng: mascot SafeAnchor trên "chồng sách", ruy băng xanh + mặt trời vàng (như ảnh mẫu) — ẩn trên điện thoại #}
     <div class="hero-art" aria-hidden="true">
       <svg class="ribbon" viewBox="0 0 560 420" preserveAspectRatio="xMidYMid meet">
         <defs><linearGradient id="rb" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#0070C9"/><stop offset="1" stop-color="#5DB4F5"/></linearGradient></defs>
@@ -51,9 +50,8 @@
       </svg>
       <span class="sun"></span>
       <span class="books"><i></i><i></i><i></i></span>
-      <img class="mascot" src="/static/brand/mascot.png" alt="">
+      <img class="mascot" src="/static/brand/mascot.png" alt="" data-tilt>
       <div class="bubble"><b>Chào {{ web.actor_label }}!</b> {% if n_req %}Có {{ n_req }} yêu cầu xin thêm giờ đang chờ đó.{% elif kids %}Tớ đang canh {{ ns.devs }} máy cho cả nhà.{% else %}Mình cùng tạo hồ sơ đầu tiên nhé?{% endif %}</div>
-      <div class="art-chip">{{ icon('shield-check') }}{% if kids %}{{ ns.online }}/{{ ns.devs }} máy đang kết nối{% else %}Không chạy ẩn · Minh bạch với con{% endif %}</div>
     </div>
   </div>
 </section>
@@ -72,94 +70,16 @@
 
 <div id="kids">{% include "_overview_cards.html" %}</div>
 
-{# ---------------------------------------------------------- Hướng dẫn nhanh 4 bước (dải xanh trời) #}
-<section class="band band-sky" id="huong-dan" aria-labelledby="guide-title">
+{# Dải thu gọn: hướng dẫn + hỏi đáp nằm ở trang phụ /huong-dan #}
+<section class="band tight help-strip-band" aria-label="Hướng dẫn và hỏi đáp">
   <div class="container">
-    <div class="sec-head split">
-      <div><p class="eyebrow">{{ icon('rocket') }}Bắt đầu nhanh</p>
-        <h2 id="guide-title">Từ lúc tạo hồ sơ đến <span class="hl">buổi dùng máy đầu tiên</span></h2></div>
-      <p class="lead">Bốn bước, khoảng 10 phút. Bước nào xong, SafeAnchor tự đánh dấu dựa trên dữ liệu thật của gia đình mình.</p>
-    </div>
-    <ol class="steps">
-      <li class="step{{ ' done' if guide.kid }}">
-        <p class="eyebrow">Bước 1</p><h3>Tạo hồ sơ cho con</h3>
-        <p>Chỉ cần tên gọi ở nhà và năm sinh — không cần họ tên đầy đủ. Tên được mã hóa khi lưu.</p>
-        {% if guide.kid %}<span class="state">{{ icon('circle-check') }}Đã xong</span>{% else %}<a class="link-arrow sm" href="/children/new">Tạo hồ sơ{{ icon('arrow-right') }}</a>{% endif %}
-      </li>
-      <li class="step{{ ' done' if guide.device }}">
-        <p class="eyebrow">Bước 2</p><h3>Ghép máy tính của con</h3>
-        <p>Tạo mã 8 ký tự trong trang của con, nhập mã khi cài SafeAnchor trên máy con. Mã dùng một lần, hết hạn sau 10 phút.</p>
-        {% if guide.device %}<span class="state">{{ icon('circle-check') }}Đã xong</span>{% elif kids %}<a class="link-arrow sm" href="/children/{{ kids[0].id }}#ghep-thiet-bi">Tạo mã ghép{{ icon('arrow-right') }}</a>{% else %}<span class="state todo">Sau bước 1</span>{% endif %}
-      </li>
-      <li class="step{{ ' done' if guide.policy }}">
-        <p class="eyebrow">Bước 3</p><h3>Đặt giờ và nội dung</h3>
-        <p>Giới hạn ngày thường / cuối tuần, lịch tuần 7×48 ô, nhóm nội dung cần chặn, Tìm kiếm an toàn.</p>
-        {% if guide.policy %}<span class="state">{{ icon('circle-check') }}Đã tùy chỉnh</span>{% elif kids %}<a class="link-arrow sm" href="/children/{{ kids[0].id }}#chinh-sach">Mở cài đặt{{ icon('arrow-right') }}</a>{% else %}<span class="state todo">Sau bước 1</span>{% endif %}
-      </li>
-      <li class="step{{ ' done' if guide.link }}">
-        <p class="eyebrow">Bước 4</p><h3>Cùng con xem lại mỗi tuần</h3>
-        <p>Tạo link “Hôm nay con đã dùng gì” để con tự xem; trả lời yêu cầu xin thêm giờ ngay trên trang này.</p>
-        {% if guide.link %}<span class="state">{{ icon('circle-check') }}Đã tạo link cho con</span>{% elif kids %}<a class="link-arrow sm" href="/children/{{ kids[0].id }}#ghep-thiet-bi">Tạo link cho con{{ icon('arrow-right') }}</a>{% else %}<span class="state todo">Sau bước 1</span>{% endif %}
-      </li>
-    </ol>
-    <div class="welcome-card">
-      <img src="/static/brand/mascot.png" alt="Mascot SafeAnchor">
-      <div>
-        <p class="eyebrow">Lời nhắn từ SafeAnchor</p>
-        <h3>Nói chuyện với con <span class="hl">trước khi bật</span></h3>
-        <p>SafeAnchor không có chế độ ẩn: biểu tượng luôn ở góc màn hình, con xem được dữ liệu của mình và nhật ký “ai đã đổi gì”. Khi hết giờ, máy nhắc trước 10 – 5 – 1 phút và cho 60 giây để lưu bài.</p>
-      </div>
-      <a class="btn btn-white" href="#hoi-dap">Đọc câu hỏi thường gặp{{ icon('arrow-right') }}</a>
-    </div>
-  </div>
-</section>
-
-{# ---------------------------------------------------------- Hỏi đáp (dải xám, accordion) #}
-<section class="band band-grey" id="hoi-dap" aria-labelledby="faq-title">
-  <div class="container faq-grid">
-    <div class="faq-side">
-      <p class="eyebrow">{{ icon('circle-help') }}Hỏi đáp</p>
-      <h2 id="faq-title">Câu hỏi thường gặp của phụ huynh</h2>
-      <p class="lead">Những điều ba mẹ hay băn khoăn khi lần đầu dùng SafeAnchor. Bấm vào câu hỏi để xem trả lời.</p>
-      <a class="btn" href="#huong-dan">Xem hướng dẫn 4 bước{{ icon('arrow-right') }}</a>
-      <ul class="faq-facts">
-        <li>{{ icon('eye') }}Không có chế độ ẩn</li>
-        <li>{{ icon('lock') }}Dữ liệu nhạy cảm mã hóa AES-256-GCM</li>
-        <li>{{ icon('trash-2') }}Tự xóa dữ liệu sau 90 ngày</li>
-      </ul>
-    </div>
-    <div class="faq-list">
-      {% set FAQ = [
-        ("SafeAnchor có theo dõi lén con không?", "Không. Biểu tượng SafeAnchor luôn hiện trên máy con, con được xem chính những số liệu ba mẹ thấy (qua link “Hôm nay con đã dùng gì”) cùng nhật ký mọi thay đổi chính sách. Không có tính năng ẩn tiến trình hay đổi tên."),
-        ("SafeAnchor lưu những dữ liệu gì?", "Thời lượng dùng máy theo nhóm nội dung, tên ứng dụng đang chạy và tên miền cấp hai (ví dụ khanacademy.org). Không lưu địa chỉ trang đầy đủ, nội dung, tin nhắn hay ảnh màn hình. Tên gọi của con và lời nhắn được mã hóa; dữ liệu hoạt động tự xóa sau 90 ngày."),
-        ("Con chỉnh đồng hồ máy để chơi thêm có được không?", "Không. SafeAnchor đếm giờ bằng đồng hồ đơn điệu của hệ điều hành, nên lùi hay tua giờ hệ thống không làm tăng thời gian còn lại. Mỗi lần đồng hồ bị chỉnh, ba mẹ thấy một cảnh báo trên trang này."),
-        ("Khi hết giờ, máy của con sẽ thế nào?", "Máy nhắc trước 10, 5 và 1 phút, sau đó cho 60 giây để con lưu bài rồi chuyển sang màn hình “tạm nghỉ” với lời giải thích nhẹ nhàng. Con có thể bấm “Xin thêm giờ”; yêu cầu hiện ở đầu trang này trong vài giây."),
-        ("Chặn trang web hoạt động ra sao?", "Máy con hỏi tên miền qua bộ lọc DNS của SafeAnchor. Tên miền thuộc nhóm bị chặn (và mọi tên miền con của nó) không được phân giải; Google, YouTube, Bing, DuckDuckGo bị ép Tìm kiếm an toàn; đường vòng DNS-over-HTTPS cũng bị chặn."),
-        ("Máy của con mất mạng thì sao?", "Chính sách đã lưu trên máy vẫn được áp dụng đầy đủ khi không có mạng. Lệnh ba mẹ gửi lúc máy ngoại tuyến sẽ được thực hiện ngay khi máy kết nối lại."),
-        ("Tôi muốn thêm máy thứ hai hoặc gỡ một máy?", "Mở trang của con → mục “Ghép thiết bị” → tạo mã mới cho máy thứ hai. Muốn gỡ, bấm “Gỡ máy” trên thẻ thiết bị; máy đó phải ghép lại nếu muốn dùng tiếp."),
-        ("Hai phụ huynh cùng quản lý được không?", "Được. Mỗi người giám hộ có tên gọi riêng (“Ba”, “Mẹ”, “Bà nội”…); mọi thay đổi đều ghi rõ ai đổi, đổi gì, từ giá trị nào sang giá trị nào."),
-        ("Làm sao xóa toàn bộ dữ liệu của con?", "Trong trang của con, mục “Xóa dữ liệu”: gõ đúng tên gọi của con để xác nhận. Server xóa mọi sự kiện, thống kê, yêu cầu và gửi lệnh xóa bộ đệm trên máy con. Không hoàn tác được.")
-      ] %}
-      {% for q, a in FAQ %}
-      <details class="faq"{% if loop.first %} open{% endif %}>
-        <summary><span>{{ q }}</span><span class="pm">{{ icon('plus') }}</span></summary>
-        <p class="ans">{{ a }}</p>
-      </details>
-      {% endfor %}
-    </div>
-  </div>
-</section>
-
-{# ---------------------------------------------------------- Lời kêu gọi (dải navy) #}
-<section class="band band-navy cta" aria-labelledby="cta-title">
-  <div class="container">
-    <p class="eyebrow">SafeAnchor</p>
-    <h2 id="cta-title">Mỗi đứa trẻ xứng đáng có thời gian màn hình <span class="hl">vừa vặn</span></h2>
-    <p class="lead">Đặt giới hạn cùng con, xem lại cùng con, và để con tự xin thêm giờ khi cần — thay vì giành giật chiếc máy tính mỗi tối.</p>
-    <div class="row">
-      <a class="btn btn-white" href="/children/new">{{ icon('plus') }}Thêm hồ sơ con</a>
-      <a class="btn btn-ghost-light" href="/family">Quản lý gia đình{{ icon('arrow-right') }}</a>
-    </div>
+    <a class="help-strip" href="/huong-dan">
+      <img src="/static/brand/mascot.png" alt="">
+      <span class="hs-text"><b>Hướng dẫn &amp; câu hỏi thường gặp</b>
+        <span>{% if guide.done < 4 %}Đã xong {{ guide.done }}/4 bước bắt đầu nhanh — xem bước tiếp theo.{% else %}Đã xong cả 4 bước bắt đầu. Xem lại cách SafeAnchor hoạt động và 9 câu hỏi ba mẹ hay hỏi.{% endif %}</span></span>
+      <span class="hs-steps" aria-hidden="true">{% for k in ('kid', 'device', 'policy', 'link') %}<i class="{{ 'on' if guide[k] }}"></i>{% endfor %}</span>
+      <span class="link-arrow sm">Mở{{ icon('arrow-right') }}</span>
+    </a>
   </div>
 </section>
 

@@ -163,3 +163,73 @@ def test_tray_view_logic_for_new_ui():
     s = V.block_screen({"phase": "locked", "lock_reason": "parent", "lock_until": "16:30", "profile": {}})
     assert "16:30" in s.what
     assert V.toast_text({"kind": "break_over"}, {"nickname": "Bin", "guardian_call": "Mẹ"})
+
+
+def test_mascot_lines_use_real_numbers_and_stay_kind():
+    from datetime import datetime
+    prof = {"nickname": "Bin", "self_pronoun": "con", "guardian_call": "Mẹ"}
+    now = datetime(2026, 11, 20, 16, 5)
+    tic = V.mascot_lines("tictac", prof, 23 * 60, "active", now=now)
+    assert any("còn 23 phút" in s for s in tic["poke"]) and any("16:05" in s for s in tic["poke"])
+    assert any("Còn 8 phút" in s for s in V.mascot_lines("tictac", prof, 8 * 60, "active")["poke"])
+    assert all("tạm nghỉ" in s or "Ngủ ngon" in s for s in V.mascot_lines("tictac", prof, 0, "locked")["poke"])
+    assert any("học 35 phút" in s for s in V.mascot_lines("sao", prof, study_min=35)["poke"])
+    assert any("hỏi Mẹ" in s for s in V.mascot_lines("khien", prof)["poke"])
+    allx = V.mascot_lines("khien", {}) | {"x": V.mascot_lines("sao", None)["poke"]}
+    assert all("bạn" in s for s in allx["party"] + allx["hint"])   # thiếu hồ sơ => gọi "bạn", không lỗi
+    # mascot không bao giờ nhắc chuyện bị chặn (trẻ không có cảm giác bị theo dõi)
+    for k in ("tictac", "khien", "sao"):
+        for pool in V.mascot_lines(k, prof, 5 * 60, "active", 10).values():
+            assert all("chặn" not in s.lower() for s in pool)
+    assert set(V.MOOD_TO_EXPR) >= {"happy", "encourage", "remind", "sleepy", "celebrate"}
+
+
+def test_tray_mascot3d_atlas_and_interactions(monkeypatch, tmp_path):
+    import math
+    import os
+    import pytest
+    pytest.importorskip("PySide6")
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
+    from agent.tray import app as A
+    from agent.tray import mascot3d as M3
+    _qa = QApplication.instance() or QApplication([])  # noqa: F841
+    # atlas render sẵn: đủ 3 nhân vật, siêu dữ liệu khớp ảnh
+    for k in M3.KINDS:
+        meta = json.loads((M3.ATLAS_DIR / f"{k}.json").read_text(encoding="utf-8"))
+        assert meta["yaw_frames"] == 24 and set(meta["exprs"]) == {"joy", "blink", "sleepy", "wow", "love"}
+        at = M3.Atlas.get(k)
+        assert at is not None and len(at.frames) == 29 and 0 < at.head < at.feet < 1
+    at = M3.Atlas.get("tictac")
+    assert at.frame_index(0, "happy") == 0 and at.frame_index(0, "joy") == at.exprs["joy"]
+    assert at.frame_index(math.pi, "joy") == 12            # quay lưng: khung xoay, không phải khung nét mặt
+    assert at.frame_index(-math.pi / 12, "happy") == 23    # quay trái 15° = khung cuối
+    # trong cửa sổ: chạm => nét mặt vui + bong bóng thoại dùng lời thoại thật; 5 chạm => nhảy múa
+    host = QWidget()
+    m = A.live_mascot("tictac", "happy", 128)
+    assert isinstance(m, M3.Mascot3D)
+    QVBoxLayout(host).addWidget(m)
+    m.set_context(profile={"nickname": "Bin"}, remaining_sec=600 + 1, phase="active")
+    events = []
+    m.reacted.connect(events.append)
+    m.poke()
+    assert m._expr() == "joy" and m.bubble is not None
+    pool = V.mascot_lines("tictac", {"nickname": "Bin"}, 601, "active")["poke"]
+    assert m.bubble.text in pool or m.bubble.text.startswith("Bây giờ là")   # câu giờ có thể lệch phút khi chạy test
+    for _ in range(4):
+        m.poke()
+    assert events == ["poke"] * 4 + ["party"]
+    m.tickle()
+    assert events[-1] == "tickle" and m._expr() == "love"
+    m.set("sao", "celebrate")
+    assert m.kind == "sao" and m._expr() == "love"         # nét mặt tạm thời vẫn giữ tới khi hết hạn
+    # giảm chuyển động: không nhảy / không xoay, vẫn đổi nét mặt
+    r = M3.Mascot3D("khien", "happy", 96, reduced=True)
+    r.poke()
+    for _ in range(20):
+        r._step(1 / 60)
+    assert r.jump_px == 0 and r.spinT < 0 and r._expr() == "joy"
+    # thiếu ảnh atlas => Tray vẫn chạy với mascot SVG
+    monkeypatch.setattr(M3, "ATLAS_DIR", tmp_path)
+    monkeypatch.setattr(M3.Atlas, "_cache", {})
+    assert isinstance(A.live_mascot("sao", "happy", 96), A.Mascot)

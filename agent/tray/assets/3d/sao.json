@@ -1,0 +1,16 @@
+{
+ "cell": 224,
+ "cols": 8,
+ "rows": 4,
+ "yaw_frames": 24,
+ "exprs": {
+  "joy": 24,
+  "blink": 25,
+  "sleepy": 26,
+  "wow": 27,
+  "love": 28
+ },
+ "feet": 0.8881,
+ "head": 0.1105,
+ "source": "dashboard/static/js/mascot3d.js (render bởi tools/render_mascot_sprites.py)"
+}

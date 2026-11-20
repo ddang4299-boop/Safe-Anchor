@@ -86,6 +86,53 @@ def mascot_for(kind: str) -> tuple[str, str]:
     }.get(kind, ("tictac", "happy"))
 
 
+MASCOT_NAMES = {"tictac": "Tíc-Tắc", "khien": "Khiên Xanh", "sao": "Sao Nhỏ"}
+
+# Nét mặt của khung ảnh 3D (atlas) theo "tâm trạng" của mascot SVG cũ => thay thế được tại chỗ
+MOOD_TO_EXPR = {"happy": "happy", "encourage": "happy", "remind": "wow", "sleepy": "sleepy", "celebrate": "joy"}
+
+
+def _cap(s: str) -> str:
+    return s[:1].upper() + s[1:] if s else s
+
+
+def mascot_lines(kind: str, profile: dict | None, remaining_sec: int | None = None, phase: str | None = None,
+                 study_min: int = 0, now=None) -> dict[str, list[str]]:
+    """Lời thoại khi trẻ chạm vào mascot 3D (giống bản web, dùng số liệu thật của trẻ).
+
+    Trả về {"poke": [...], "tickle": [...], "party": [...], "hint": [...]}. Chỉ nói điều tích cực / nhắc nhẹ:
+    KHÔNG nhắc số lần bị chặn hay tên trang bị chặn (trẻ không cảm thấy bị theo dõi).
+    """
+    from datetime import datetime
+    p = profile or {}
+    name = (p.get("nickname") or "bạn").strip() or "bạn"
+    me = (p.get("self_pronoun") or "con").strip() or "con"
+    guardian = (p.get("guardian_call") or "ba mẹ").strip() or "ba mẹ"
+    now = now or datetime.now()
+    clock = f"{now.hour:02d}:{now.minute:02d}"
+    if kind == "tictac":
+        if phase == "locked":
+            poke = [f"Máy đang tạm nghỉ, mình nghỉ ngơi chút nha {name}!", f"Ngủ ngon nha, Tíc-Tắc canh giờ cho {me} rồi."]
+        elif remaining_sec is None:
+            poke = [f"Bây giờ là {clock} nè!", f"Cứ 30 phút mình nghỉ mắt một chút nha {name}!"]
+        elif remaining_sec <= 0:
+            poke = [f"Hôm nay hết giờ rồi, mai mình chơi tiếp nha {name}!", f"Ngủ ngon nha, Tíc-Tắc canh giờ cho {me} rồi."]
+        elif remaining_sec <= 600:
+            left = max(1, round(remaining_sec / 60))
+            poke = [f"Còn {left} phút thôi, {me} lưu bài trước nhé!", f"Reng reng! Sắp hết giờ rồi đó {name}."]
+        else:
+            poke = [f"Reng reng! Hôm nay {me} {format_remaining(remaining_sec)} nữa đó.", f"Bây giờ là {clock} nè!",
+                    f"Cứ 30 phút mình nghỉ mắt một chút nha {name}!"]
+    elif kind == "khien":
+        poke = [f"Khiên Xanh luôn che chắn cho {name} khi lên mạng!", f"Gặp trang lạ thì hỏi {guardian} nha.",
+                f"{_cap(me)} thấy rõ mọi quy tắc — không có gì bí mật đâu!", f"Đừng cho người lạ biết mật khẩu nha {name}!"]
+    else:
+        poke = [f"Hôm nay {me} học {study_min} phút rồi đó, tuyệt quá!" if study_min > 0 else "Học một chút là có thêm ngôi sao nè!",
+                f"Sao Nhỏ tin {name} làm được mà!", "Mình cùng giữ đúng giờ để được huy hiệu nha!"]
+    return {"poke": poke, "tickle": ["Hihi, nhột quá!", "Á á, đừng cù nữa mà!", "Hihihi!"],
+            "party": [f"Cả nhà cùng nhảy với {name} nào!"], "hint": [f"Chạm vào tớ thử xem, {name}!"]}
+
+
 @dataclass
 class BlockScreen:
     """Nội dung màn hình chặn: luôn trả lời đủ 3 câu hỏi của trẻ."""

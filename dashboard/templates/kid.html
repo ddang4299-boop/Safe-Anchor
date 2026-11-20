@@ -8,8 +8,10 @@
   <title>Hôm nay {{ profile.nickname }} đã dùng gì · SafeAnchor</title>
   <link rel="icon" href="/static/brand/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="stylesheet" href="/static/css/ogk.css">
+  <script type="module" src="/static/js/mascot3d.js"></script>
 </head>
-{# Trang CHỈ ĐỌC cho trẻ, không tải JavaScript. Mascot chuyển động bằng CSS nằm sẵn trong tệp SVG. #}
+{# Trang CHỈ ĐỌC cho trẻ. JavaScript chỉ dùng cho mascot 3D tương tác ở phần mở đầu (three.js tự lưu trên server);
+   tắt JS hoặc máy không có WebGL thì vẫn thấy đủ nội dung + mascot SVG chuyển động bằng CSS. #}
 <body class="kid">
 {% set name = profile.nickname %}{% set me = profile.self_pronoun %}{% set avatar = profile.avatar_key or 'tictac' %}
 <header class="k-top">
@@ -33,8 +35,10 @@
       Tíc-Tắc, Khiên Xanh và Sao Nhỏ luôn ở đây để {{ me }} biết rõ mọi chuyện.</p>
     <a class="k-cta" href="#hom-nay">Xem hôm nay của {{ me }} <span aria-hidden="true">↓</span></a>
   </div>
-  <div class="k-stage" aria-hidden="true">
-    <div class="blob"></div>
+  {# data-*: chỉ là số liệu đã hiện sẵn trên trang này — dùng cho lời thoại của mascot 3D #}
+  <div class="k-stage" data-m3d data-avatar="{{ avatar }}" data-name="{{ name }}" data-me="{{ me }}" data-guardian="{{ profile.guardian_call }}"
+       data-left="{{ kv.left }}" data-streak="{{ kv.streak }}" data-study="{{ kv.study }}">
+    <div class="blob" aria-hidden="true"></div>
     <img class="shapes" src="/static/img/deco_shapes.svg" alt="">
     <img class="m m3" src="/static/mascots/sao_celebrate.svg" alt="">
     <img class="m m1" src="/static/mascots/{{ avatar }}_happy.svg" alt="">

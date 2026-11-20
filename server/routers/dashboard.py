@@ -268,14 +268,29 @@ def overview(request: Request, con: int | None = None, web: WebCtx = Depends(cur
     (tắt JS vẫn chuyển hồ sơ được bằng liên kết); app.js chỉ ẩn/hiện cụm => chuyển tức thì, không tải lại."""
     kids = [child_card(db, ctx, c, with_report=True) for c in children_of(db, web.parent.id)]
     selected = con if any(k["id"] == con for k in kids) else (kids[0]["id"] if kids else None)
-    # Hướng dẫn nhanh 4 bước: đánh dấu bước đã xong từ dữ liệu thật của gia đình này
-    links = db.scalar(select(func.count()).select_from(KidLink).join(Child, KidLink.child_id == Child.id)
-                      .where(Child.parent_id == web.parent.id)) or 0
-    guide = {"kid": bool(kids), "device": any(k["devices"] for k in kids),
-             "policy": any(k["policy_version"] > 1 for k in kids), "link": links > 0}
     return render(request, "overview.html", {"web": web, "kids": kids, "page": "overview", "ctx": ctx,
                                              "selected": selected, "requests": pending_requests(db, ctx, web.parent.id),
-                                             "notes": NOTE_SUGGESTIONS, "today_text": today_text(), "guide": guide})
+                                             "notes": NOTE_SUGGESTIONS, "today_text": today_text(),
+                                             "guide": guide_state(db, web, kids)})
+
+
+def guide_state(db: Session, web: WebCtx, kids: list[dict]) -> dict:
+    """Hướng dẫn nhanh 4 bước: đánh dấu bước đã xong từ dữ liệu thật của gia đình này."""
+    links = db.scalar(select(func.count()).select_from(KidLink).join(Child, KidLink.child_id == Child.id)
+                      .where(Child.parent_id == web.parent.id)) or 0
+    g = {"kid": bool(kids), "device": any(k["devices"] for k in kids),
+         "policy": any(k["policy_version"] > 1 for k in kids), "link": links > 0}
+    g["done"] = sum(1 for v in g.values() if v)
+    return g
+
+
+@router.get("/huong-dan", response_class=HTMLResponse)
+def help_page(request: Request, web: WebCtx = Depends(current_web), db: Session = Depends(get_db),
+              ctx: AppContext = Depends(get_ctx)):
+    """Trang phụ "Hướng dẫn & hỏi đáp": 4 bước bắt đầu nhanh, lời nhắn minh bạch, câu hỏi thường gặp.
+    Tách khỏi trang tổng quan để trang chính chỉ còn các khối dùng hằng ngày."""
+    kids = [child_card(db, ctx, c) for c in children_of(db, web.parent.id)]
+    return render(request, "help.html", {"web": web, "kids": kids, "page": "help", "guide": guide_state(db, web, kids)})
 
 
 @router.get("/partials/status", response_class=HTMLResponse)

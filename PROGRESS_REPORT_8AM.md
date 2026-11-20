@@ -1,5 +1,26 @@
 # Báo cáo tiến độ — 8:00 sáng 19/11/2026
 
+> **Cập nhật sáng sớm 20/11 — mascot 3D tương tác cho trẻ (web + Tray).** **91/91 test đạt** (thêm 3 test).
+>
+> | Phần | Thay đổi | Đã kiểm chứng |
+> |---|---|---|
+> | Trang của trẻ `/kid/...` | Sân khấu mascot thành **cảnh 3D thật** (three.js r160, kiểu hoạt hình: tô màu 4 bậc + viền nét đậm). Tíc-Tắc / Khiên Xanh / Sao Nhỏ dựng bằng hình khối (không dùng ảnh), avatar của con đứng giữa. **Chạm** → nhún co giãn rồi nhảy, cười tít, bắn sao; Tíc-Tắc rung chuông + kim quay nhanh (kim chỉ **giờ thật**), Khiên Xanh xoay một vòng, Sao Nhỏ tung mũ. **Kéo ngang** → xoay 360° thấy cả lưng (có quán tính). **Kéo qua lại** = cù → đỏ mặt + tim bay. **Chạm 5 lần** → cả nhóm nhảy múa + pháo giấy. Mắt và thân dõi theo con trỏ. Bong bóng thoại dùng **số liệu thật** ("Hôm nay con học 56 phút rồi đó", "Còn 8 phút thôi, con lưu bài trước nhé!"), không bao giờ nhắc chuyện bị chặn | `kid3d.py` trên Edge: chạm giữa/trái/phải, kéo, cù, 5 chạm (chuỗi sự kiện `poke… tickle… party`), 0 lỗi JS; test `test_kid_page_mounts_3d_mascot_with_self_hosted_three` |
+> | Trợ năng + dự phòng | Mỗi mascot có nút ẩn "Chạm vào …" (Tab tới là hiện, Enter = chạm); bong bóng thoại `aria-live` cho trình đọc màn hình; tôn trọng `prefers-reduced-motion` (không nhảy/xoay, chỉ đổi nét mặt); **không có WebGL hoặc tắt JS → giữ nguyên mascot SVG cũ**. Tiết kiệm pin: dừng vẽ khi cuộn khuất hoặc đổi tab, đứng yên thì giảm nửa tốc độ khung hình, máy yếu tự hạ độ phân giải | thử bàn phím, khung 390 px (không cuộn ngang), chế độ giảm chuyển động, tắt JS |
+> | An toàn | three.js **tự lưu** (`dashboard/static/js/vendor/`, MIT, đối chiếu sha512 với npm) → không gọi CDN, giữ CSP `script-src 'self'`. Server ép kiểu MIME `.js` = `text/javascript` (có máy Windows map sai `.js` → `text/plain`, trình duyệt sẽ từ chối module vì `nosniff`) | test kiểm tra MIME + CSP |
+> | Tray (PySide6) | PySide6 không có WebGL / Qt Quick 3D nên **render sẵn**: `tools/render_mascot_sprites.py` chụp đúng mô hình three.js ở 24 góc xoay + 5 nét mặt thành `agent/tray/assets/3d/*.webp` (~100–135 KB/nhân vật). Widget mới `Mascot3D` (`agent/tray/mascot3d.py`) phát lại atlas với cùng chuyển động lò xo như web: kéo xoay có quán tính, chạm nhảy + sao, cù + tim, 5 chạm + pháo giấy, bong bóng thoại theo số liệu Tray, "z z" khi máy tạm nghỉ, Space/Enter khi Tab tới. Dùng ở trang **Hôm nay**, thanh bên, **Về SafeAnchor**, **làm quen**; HUD, toast, màn chặn giữ SVG (gọn, nhẹ). Tôn trọng cài đặt Windows "Hiện hiệu ứng động"; chỉ chạy đồng hồ khi đang hiện; **thiếu ảnh atlas → tự quay về SVG** | test `test_tray_mascot3d_atlas_and_interactions`, `test_mascot_lines_use_real_numbers_and_stay_kind`; ảnh [`tray_mascot3d_tuong_tac.png`](docs/screenshots/tray_mascot3d_tuong_tac.png) |
+> | Mascot thương hiệu (trang phụ huynh) | Chỉ **nghiêng 2.5D theo con trỏ + nảy khi chạm** trên ảnh phẳng, **không dựng 3D** (nhân vật có bản quyền — xem cảnh báo bên dưới) | thử trên Edge: nghiêng 2 hướng, nảy, tự tắt khi giảm chuyển động |
+>
+> Ảnh chụp mới: [`tre_hom_nay_1280.png`](docs/screenshots/tre_hom_nay_1280.png) (3D), [`huong_dan_1280.png`](docs/screenshots/huong_dan_1280.png), [`ho_so_con_1280.png`](docs/screenshots/ho_so_con_1280.png), tổng quan 1280/390, Tray Hôm nay / Giới thiệu / làm quen.
+>
+> **Cập nhật rạng sáng 20/11 — trang tổng quan gọn hơn + hồ sơ con mở từ tên.** **88/88 test đạt** (thêm 1 test).
+>
+> | Phần | Thay đổi | Đã kiểm chứng |
+> |---|---|---|
+> | Trang tổng quan ngắn lại | Giữ nguyên màu, mascot, thẻ và tính năng; chỉ sắp lại thứ tự theo việc ba mẹ làm hằng ngày: lời chào + chọn hồ sơ → dải số liệu → **Yêu cầu của các con** → dải navy **Thiết bị · thao tác nhanh** (Khóa khẩn cấp / Nghỉ 2h / +15 phút / Mở khóa) → 6 nhóm nội dung → biểu đồ 7 ngày. "Bắt đầu nhanh" (4 bước) + "Câu hỏi thường gặp" (9 câu) + dải kêu gọi chuyển sang **trang phụ `/huong-dan`**; trên tổng quan chỉ còn một dải mỏng "Hướng dẫn & câu hỏi thường gặp · Đã xong N/4 bước". Chân trang 4 cột → 1 hàng. Độ dài: máy tính 5 794 → 3 237 px, điện thoại ~9 000 → 5 461 px | test `test_overview_groups_details_by_category_and_has_guide_faq` (thiết bị đứng trước nhóm nội dung, không còn FAQ trên `/`, `/huong-dan` có đủ 4 bước + ≥ 8 câu); ảnh 1280/390 px |
+> | Số liệu dễ đọc | Mỗi ô của dải số liệu có nhãn riêng ở đầu (**Hôm nay · 7 ngày · Học tập 7 ngày · Bị chặn 7 ngày**) + icon, số lớn, dòng giải thích ("giới hạn 1h 30p · vượt 22p"); trên điện thoại tách thành 4 thẻ 2×2 cách nhau 12px | ảnh 390 px |
+> | Điện thoại | Thẻ **yêu cầu** lên ngay dưới lời chào (trước số liệu) để xử lý nhanh; nút thiết bị xếp 2×2, cao ≥ 42px; bỏ tranh minh họa của phần mở đầu; không cuộn ngang ở 390 px | ảnh 390 px, đo `scrollWidth` |
+> | Hồ sơ con | Không còn nút "Đổi tên" lộ ra: **bấm vào tên con** (dải số liệu, trang Gia đình, tiêu đề trang cài đặt) → bảng **Hồ sơ của con**: tên gọi ở nhà, năm sinh, cách con tự xưng, bạn đồng hành. Lưu xong máy của con nhận chính sách mới trong vài giây; nhật ký chỉ ghi "Mẹ đã đổi tên gọi ở nhà của con" — **không lưu tên mới dạng chữ rõ** (tên được mã hóa AES-256-GCM trong CSDL). Thông báo sau khi lưu chỉ nhận mã cố định từ URL (không phản chiếu chữ tùy ý); trường `back` chỉ nhận 3 giá trị (chống chuyển hướng mở) | test `test_profile_dialog_opens_from_child_name_and_saves` (lưu, không đổi gì, dữ liệu sai, `back` độc hại, thiếu CSRF); thử bấm thật trên Edge: bảng mở, con trỏ vào ô tên |
+>
 > **Cập nhật đêm 19/11 — đổi tên thành SafeAnchor + dựng lại UI/UX phụ huynh theo bố cục `newlayout.png`.** **87/87 test đạt** (thêm 1 test).
 >
 > | Phần | Thay đổi | Đã kiểm chứng |
@@ -93,7 +114,7 @@ Mở PowerShell tại `d:\FILE CODE\Mạng máy tính` (venv `.venv` Python 3.14
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -v
 ```
-Kỳ vọng: `86 passed` (dòng cảnh báo `httpx2` là của thư viện Starlette, không ảnh hưởng).
+Kỳ vọng: `91 passed` (dòng cảnh báo `httpx2` là của thư viện Starlette, không ảnh hưởng).
 
 **Bước 2 — Chạy toàn hệ thống**
 ```powershell
@@ -104,13 +125,16 @@ Kỳ vọng: 3 cửa sổ (SafeAnchor Server, SafeAnchor Agent, SafeAnchor Kids)
 - Cửa sổ Agent báo cổng 53 bận → chạy lại: `.\run_demo.ps1 -NoReset -DnsPort 15353`.
 
 **Bước 3 — Dashboard** (đăng nhập `demo@ogk.local` / `OgkDemo@2026`)
-- Tổng quan: mục "Yêu cầu của các con" (thẻ trắng viền cam bên trái) có yêu cầu mẫu "Con sắp xong màn chơi ạ" (gắn với máy mẫu nên duyệt xong lệnh sẽ "chờ máy kết nối lại"); phần của Bin: dải số liệu nổi, 6 thẻ nhóm nội dung (bấm một thẻ hoặc một lát biểu đồ tròn để mở chi tiết), biểu đồ 7 ngày, dải navy **Thiết bị** có `PC-cua-Bin` (máy mẫu, "Ngoại tuyến") và **máy này** (tên máy thật, chấm xanh nhấp nháy "Online · Đang dùng máy" — mở Word/Scratch thì đổi thành "Đang học tập" sau ≤ 60 giây).
+- Tổng quan (từ trên xuống): dải số liệu của Bin (Hôm nay · 7 ngày · Học tập 7 ngày · Bị chặn 7 ngày) → mục "Yêu cầu của các con" (thẻ trắng viền cam bên trái) có yêu cầu mẫu "Con sắp xong màn chơi ạ" (gắn với máy mẫu nên duyệt xong lệnh sẽ "chờ máy kết nối lại") → dải navy **Thiết bị · thao tác nhanh** có `PC-cua-Bin` (máy mẫu, "Ngoại tuyến") và **máy này** (tên máy thật, chấm xanh nhấp nháy "Online · Đang dùng máy" — mở Word/Scratch thì đổi thành "Đang học tập" sau ≤ 60 giây) → 6 thẻ nhóm nội dung (bấm một thẻ hoặc một lát biểu đồ tròn để mở chi tiết) → biểu đồ 7 ngày.
 - Mục "Đang xem" dưới lời chào: bấm **Na** → toàn bộ số liệu đổi sang Na ngay, URL thành `?con=2` (thử cả phím ←/→).
-- Cuộn xuống cuối trang: **Bắt đầu nhanh** (4 bước, bước đã làm có dấu "Đã xong") và **Câu hỏi thường gặp** (bấm từng câu để mở).
+- **Bấm vào tên "Bin"** (ở dải số liệu) → bảng **Hồ sơ của con** hiện ra: đổi tên gọi / năm sinh / cách con tự xưng / bạn đồng hành → **Lưu hồ sơ** → thông báo xanh "Đã lưu hồ sơ của con…"; tên mới hiện ngay trên trang, và trong Nhật ký thay đổi (trang cài đặt) có dòng "Mẹ đã đổi tên gọi ở nhà của con". Bấm tên con ở trang **Gia đình** cũng mở đúng bảng này.
+- Cuối trang có dải mỏng **Hướng dẫn & câu hỏi thường gặp** (hoặc mục cùng tên trên thanh điều hướng) → trang `/huong-dan`: **Bắt đầu nhanh** (4 bước, bước đã làm có dấu "Đã xong") và **Câu hỏi thường gặp** (bấm từng câu để mở).
 - Bấm **15 phút** (thanh công cụ nhỏ) ở thẻ **máy này** → "Đã gửi tức thì" → viên HUD trên máy cộng giờ, toast Sao Nhỏ "Mẹ đã đồng ý…".
 - **Cài đặt chi tiết** (trang của Bin, một trang cuộn): đổi hạn mức, bật/tắt chip nhóm nội dung, kéo-tô lưới 7×48 hoặc bấm "Mẫu ngày đi học" → **Lưu chính sách** → "Đã lưu (phiên bản N)", nhãn phiên bản tự tăng; cuộn xuống **Nhật ký thay đổi**: "Mẹ đã đổi … từ X thành Y".
-- Thu nhỏ trình duyệt về bề rộng điện thoại (F12 → Ctrl+Shift+M): thanh điều hướng chuyển xuống đáy màn hình, lưới lịch cuộn ngang trong thẻ.
-- Trang của trẻ: mở `http://127.0.0.1:8000/kid/xem-cua-bin-demo-token-2026` (hoặc bấm **Tạo link cho con** — link cũ sẽ hết hiệu lực).
+- Thu nhỏ trình duyệt về bề rộng điện thoại (F12 → Ctrl+Shift+M): thanh điều hướng chuyển xuống đáy màn hình, thẻ yêu cầu lên ngay dưới lời chào, nút thiết bị xếp 2×2, lưới lịch cuộn ngang trong thẻ.
+- Trang của trẻ: mở `http://127.0.0.1:8000/kid/xem-cua-bin-demo-token-2026` (hoặc bấm **Tạo link cho con** — link cũ sẽ hết hiệu lực). **Chạm** từng mascot 3D (mỗi bạn phản ứng khác nhau + bong bóng thoại), **kéo ngang** để xoay xem lưng, **kéo qua lại nhanh** để cù, **chạm 5 lần liền** để cả nhóm nhảy múa. Nếu vẫn thấy mascot phẳng: khởi động lại server (đã sửa `server/main.py`) rồi Ctrl+F5.
+- Tray: mở cửa sổ SafeAnchor Kids → trang **Hôm nay**: chạm / kéo / cù Tíc-Tắc (đứng yên 6 giây nó tự rủ "Chạm vào tớ thử xem, Bin!"); Sao Nhỏ ở thanh bên và Khiên Xanh ở **Về SafeAnchor** cũng chơi được. Thử nhanh không cần agent: `.\.venv\Scripts\python.exe -m agent.tray.app --demo`.
+- Trang tổng quan: rê chuột lên mascot ở phần mở đầu → ảnh nghiêng theo con trỏ; bấm → nảy nhẹ.
 
 **Bước 4 — DNS (PowerShell mới)**
 ```powershell
