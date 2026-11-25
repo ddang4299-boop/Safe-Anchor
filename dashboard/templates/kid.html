@@ -1,4 +1,4 @@
-{% from "_icons.html" import icon %}<!doctype html>
+{% from "_stickers.html" import sticker %}<!doctype html>
 <html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,12 +16,12 @@
 {% set name = profile.nickname %}{% set me = profile.self_pronoun %}{% set avatar = profile.avatar_key or 'tictac' %}
 <header class="k-top">
   <div class="k-top-in glass">
-    <span class="k-logo"><img src="/static/brand/mascot.png" alt="">SafeAnchor</span>
+    <span class="k-logo">SafeAnchor</span>
     <nav class="k-nav" aria-label="Các mục">
-      <a href="#hom-nay"><span aria-hidden="true">⏰</span>Hôm nay</a>
-      <a href="#bao-cao"><span aria-hidden="true">🧩</span>Khám phá</a>
-      <a href="#ai-doi-gi"><span aria-hidden="true">📜</span>Ai đổi gì</a>
-      <a href="#bi-mat"><span aria-hidden="true">🔒</span>Bí mật của {{ me }}</a>
+      <a href="#hom-nay">{{ sticker('clock', 'k-nav-st', 30) }}Hôm nay</a>
+      <a href="#bao-cao">{{ sticker('explore', 'k-nav-st', 30) }}Khám phá</a>
+      <a href="#ai-doi-gi">{{ sticker('notebook', 'k-nav-st', 30) }}Ai đổi gì</a>
+      <a href="#bi-mat">{{ sticker('lock', 'k-nav-st', 30) }}Bí mật của {{ me }}</a>
     </nav>
   </div>
 </header>
@@ -51,7 +51,7 @@
   {# Bento "Hôm nay em đã dùng gì" #}
   <div class="k-bento" id="hom-nay">
     <section class="card s6 tint-indigo">
-      <h2><span class="k-ic">⏰</span>Hôm nay của {{ me }}</h2>
+      <h2>{{ sticker('clock') }}Hôm nay của {{ me }}</h2>
       <div class="k-today">
         <div class="ring" style="--p:{{ kv.pct }}" role="img" aria-label="Đã dùng {{ kv.used }} trên {{ kv.quota_today }} phút">
           <div><b>{{ kv.used }}</b><span>/ {{ kv.quota_today }} phút</span></div>
@@ -65,24 +65,24 @@
       </div>
     </section>
     <section class="card s3 tint-mint">
-      <h2><span class="k-ic">📚</span>Học tập</h2>
+      <h2>{{ sticker('book') }}Học tập</h2>
       <span class="k-big">{{ kv.study }}<small> phút</small></span>
       <div class="rbar mint"><span style="width:{{ [100 * kv.study / (kv.used or 1), 100]|min|round|int }}%"></span></div>
       <p class="k-sub small" style="margin-top:8px">Word, Scratch, trang học tập…</p>
     </section>
     <section class="card s3 tint-sun">
-      <h2><span class="k-ic">🎮</span>Giải trí</h2>
+      <h2>{{ sticker('game') }}Giải trí</h2>
       <span class="k-big">{{ kv.fun }}<small> phút</small></span>
       <div class="rbar sun"><span style="width:{{ [100 * kv.fun / (kv.used or 1), 100]|min|round|int }}%"></span></div>
       <p class="k-sub small" style="margin-top:8px">Trò chơi, phim, nhạc…</p>
     </section>
     <section class="card s12 tint-grape">
       <div class="k-badge">
-        <div class="medal{{ '' if kv.on_time else ' off' }}">{{ icon('award') }}</div>
+        {{ sticker('medal', 'medal' if kv.on_time else 'medal off', 112) }}
         <div>
           <h2 style="margin:0 0 4px">{% if kv.on_time %}Huy hiệu “Ngôi Sao Đúng Giờ”!{% else %}Huy hiệu đang chờ {{ me }}{% endif %}</h2>
           <p style="margin:0;font-weight:700">{% if kv.on_time %}{{ me|capitalize }} dùng máy trong giờ cho phép {{ kv.streak }} ngày liền rồi. Giỏi quá!{% else %}Hôm nay hơi quá giờ một chút. Ngày mai {{ me }} thử lại nhé — Sao Nhỏ tin {{ me }} làm được!{% endif %}</p>
-          <div class="streak" aria-label="7 ngày gần đây">{% for d in kv.days %}<i class="{{ 'ok' if d.ok }}" title="{{ d.label }} {{ d.date }}: {{ d.minutes }} phút">{{ '⭐' if d.ok else '·' }}</i>{% endfor %}</div>
+          <div class="streak" aria-label="7 ngày gần đây">{% for d in kv.days %}<i class="{{ 'ok' if d.ok }}" title="{{ d.label }} {{ d.date }}: {{ d.minutes }} phút">{% if d.ok %}{{ sticker('star', '', 30) }}{% else %}·{% endif %}</i>{% endfor %}</div>
         </div>
       </div>
     </section>
@@ -92,19 +92,20 @@
 
   <div class="k-bento">
     <section class="card s7" id="ai-doi-gi">
-      <h2><span class="k-ic">📜</span>Ai đã thay đổi cài đặt của {{ me }}?</h2>
+      <h2>{{ sticker('notebook') }}Ai đã thay đổi cài đặt của {{ me }}?</h2>
       <ul class="feed">
         {% for a in audit %}<li><span class="when">{{ a.when }}</span> — {{ a.lines|join('; ') }}</li>
         {% else %}<li class="muted">Chưa có thay đổi nào.</li>{% endfor %}
       </ul>
     </section>
     <section class="card s5 tint-sky" id="bi-mat">
-      <h2><span class="k-ic">🔒</span>SafeAnchor biết gì về {{ name }}?</h2>
+      <h2>{{ sticker('lock') }}SafeAnchor biết gì về {{ name }}?</h2>
       <div class="k-know">
-        <div class="yes"><h3>{{ icon('circle-check') }}Tớ biết</h3>
-          <ul><li>{{ icon('check') }}Tên ứng dụng {{ me }} mở</li><li>{{ icon('check') }}Tên trang web (không có nội dung)</li><li>{{ icon('check') }}Thời gian dùng máy</li></ul></div>
-        <div class="no"><h3>{{ icon('x') }}Tớ KHÔNG</h3>
-          <ul><li>{{ icon('x') }}Đọc tin nhắn</li><li>{{ icon('x') }}Chụp màn hình</li><li>{{ icon('x') }}Nghe micro, bật camera</li></ul></div>
+        {% set ok, no = sticker('check', 'k-li', 26), sticker('cross', 'k-li', 26) %}
+        <div class="yes"><h3>{{ sticker('check', 'k-h3', 36) }}Tớ biết</h3>
+          <ul><li>{{ ok }}Tên ứng dụng {{ me }} mở</li><li>{{ ok }}Tên trang web (không có nội dung)</li><li>{{ ok }}Thời gian dùng máy</li></ul></div>
+        <div class="no"><h3>{{ sticker('cross', 'k-h3', 36) }}Tớ KHÔNG</h3>
+          <ul><li>{{ no }}Đọc tin nhắn</li><li>{{ no }}Chụp màn hình</li><li>{{ no }}Nghe micro, bật camera</li></ul></div>
       </div>
       <p class="small k-sub" style="margin-top:14px">Dữ liệu tự xóa sau 90 ngày. {{ me|capitalize }} luôn thấy biểu tượng SafeAnchor trên máy.</p>
     </section>

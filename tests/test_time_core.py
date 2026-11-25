@@ -170,6 +170,27 @@ def test_add_time_extends_and_rearms_warnings():
     assert 10 not in core.warned  # sẽ cảnh báo lại khi còn 10 phút
 
 
+def test_add_time_outside_schedule_actually_unlocks():
+    """Lỗi thật: 23:05, lịch 06:00–22:00, ba mẹ đồng ý +15 phút mà máy vẫn "Tạm nghỉ" (chỉ quota được cộng)."""
+    fc, core = make_core(vn(2026, 11, 25, 23, 5), quota=90, schedule=sch.daily_window("06:00", "22:00"))
+    run(fc, core, 70)
+    assert core.phase == "locked" and core.lock_reason == "schedule"
+    acts = core.apply_command("add_time", {"minutes": 15})
+    assert core.phase == "active" and 899 <= core.remaining_sec <= 900
+    assert any(a.kind == "unlock_session" for a in acts)
+    core.apply_command("add_time", {"minutes": 10})       # duyệt thêm lần nữa => nối tiếp, không ghi đè
+    assert 1499 <= core.remaining_sec <= 1500
+    run(fc, core, 25 * 60 + 61)                            # hết phần được thêm + 60 giây ân hạn => nghỉ lại
+    assert core.phase == "locked" and core.lock_reason == "schedule"
+
+
+def test_add_time_inside_schedule_only_raises_quota():
+    fc, core = make_core(vn(2026, 11, 18, 10), quota=3, schedule=sch.daily_window("06:00", "22:00"))
+    run(fc, core, 200)
+    core.apply_command("add_time", {"minutes": 15})
+    assert core.override_until is None and core.phase == "active"
+
+
 def test_ack_break_locks_with_self_subject():
     fc, core = make_core(vn(2026, 11, 18), quota=1)
     run(fc, core, 61)

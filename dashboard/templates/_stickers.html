@@ -1,0 +1,3 @@
+{# Nhãn dán VẼ TAY cho trang của trẻ (sinh bởi tools/gen_stickers.py) — thay cho emoji / bộ icon đóng gói sẵn.
+   Chỉ để trang trí => alt rỗng; chữ bên cạnh đã nói đủ nghĩa. #}
+{% macro sticker(name, cls='k-ic', size=52) %}<img class="{{ cls }}" src="/static/stickers/{{ name }}.svg" alt="" width="{{ size }}" height="{{ size }}">{% endmacro %}

@@ -184,6 +184,7 @@ class Mascot3D(QWidget):
         self.bubble: SpeechBubble | None = None
         self.bubbleUntil = 0.0
         self.last_line: dict[str, str] = {}
+        self.sparkle = False   # lấp lánh quanh mũ tốt nghiệp (thẻ huy hiệu "Ngôi Sao Đúng Giờ")
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.TabFocus)
         self.setCursor(Qt.PointingHandCursor)
@@ -527,6 +528,8 @@ class Mascot3D(QWidget):
         p.scale(sx, sy)
         p.drawPixmap(QRectF(-d / 2, -self.atlas.feet * d, d, d), pix, QRectF(pix.rect()))
         p.restore()
+        if self.sparkle:
+            self._paint_sparkles(p, t)
         # hạt: sao / tim / pháo giấy / z
         for q in self.parts:
             a = max(0.0, 1 - q["t"] / q["life"])
@@ -559,6 +562,29 @@ class Mascot3D(QWidget):
             p.setPen(pen)
             p.setBrush(Qt.NoBrush)
             p.drawRoundedRect(QRectF(2, 2, W - 4, H - 4), 18, 18)
+
+    def _paint_sparkles(self, p: QPainter, t: float) -> None:
+        """Bốn tia lấp lánh 4 cánh quanh mũ, nhấp nháy lệch nhịp (giảm chuyển động => đứng yên)."""
+        hx, hy = self._head()
+        W = self.width()
+        for i, (dx, dy, s) in enumerate(((-0.33, 0.13, 0.075), (0.34, 0.06, 0.06), (0.22, -0.02, 0.042), (-0.2, 0.0, 0.036))):
+            k = 0.85 if self.reduced else 0.3 + 0.7 * (0.5 + 0.5 * math.sin(t * 3.0 + i * 1.9))
+            col = QColor("#FFC93C" if i % 2 == 0 else "#FFFFFF")
+            col.setAlphaF(0.5 + 0.5 * k)
+            p.save()
+            p.translate(hx + dx * W, hy + dy * W)
+            p.setPen(QPen(QColor(245, 158, 11, int(150 * k)), 1) if i % 2 else Qt.NoPen)
+            p.setBrush(col)
+            p.drawPath(_twinkle(W * s * k))
+            p.restore()
+
+
+def _twinkle(r: float) -> QPainterPath:
+    q = r * 0.16
+    path = QPainterPath(QPointF(0, -r))
+    for a, b in (((q, -q), (r, 0)), ((q, q), (0, r)), ((-q, q), (-r, 0)), ((-q, -q), (0, -r))):
+        path.quadTo(QPointF(*a), QPointF(*b))
+    return path
 
 
 def _star(r: float) -> QPolygonF:

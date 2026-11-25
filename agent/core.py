@@ -275,6 +275,14 @@ class AgentCore:
             elif ctype == "add_time":
                 minutes = max(1, min(int(payload.get("minutes", 15)), 240))
                 self.bonus_min += minutes
+                # Thêm giờ chỉ nới QUOTA; "còn lại" = min(quota, thời gian tới khung giờ nghỉ). Nếu lịch sẽ chặn
+                # trước khi con dùng hết phần được thêm (vd 23:00, lịch 06:00–22:00) thì cộng quota vô ích — máy
+                # vẫn "Tạm nghỉ" dù ba mẹ đã đồng ý. Khi đó mở cửa sổ ngoại lệ đúng N phút (như lệnh unlock),
+                # nối tiếp cửa sổ đang có nếu ba mẹ duyệt nhiều lần.
+                rem_sched = sch.seconds_until_block(self.time_policy()["schedule"], self.clock.local_datetime())
+                if rem_sched < minutes * 60:
+                    start = self.override_until if self.override_until is not None and self.override_until > mono else mono
+                    self.override_until = start + minutes * 60
                 acts.append(self._event("override_granted", "add_time", minutes * 60))
                 acts.append(self._notify("request_approved", minutes=minutes, note=payload.get("note", ""),
                                          by=payload.get("by", "")))
@@ -321,6 +329,7 @@ class AgentCore:
                 if self.phase == "grace" and self.grace_deadline and self.last_mono else 0,
                 "day": self.day,
                 "now_slot": local.hour * 2 + local.minute // 30,
+                "now_min": local.hour * 60 + local.minute,   # kim "bây giờ" trên dải thời gian của Tray
                 "segments": sch.day_segments(pol["schedule"], local),
                 "next_allowed": nxt.strftime("%H:%M") if nxt and nxt.date() == local.date() else None,
                 "lock_until": to_local(self.parent_lock_until, self.clock.tz_offset_min).strftime("%H:%M")

@@ -92,7 +92,7 @@ def test_time_bar_color_thresholds():
     assert V.time_color(30 * 60) == V.MINT
     assert V.time_color(10 * 60) == V.SUN
     assert V.time_color(60) == V.CORAL
-    assert V.time_icon(60) != V.time_icon(30 * 60)  # không chỉ dùng màu
+    assert V.time_mood(60) != V.time_mood(30 * 60)  # không chỉ dùng màu
 
 
 def test_block_screen_answers_three_questions():
@@ -233,3 +233,107 @@ def test_tray_mascot3d_atlas_and_interactions(monkeypatch, tmp_path):
     monkeypatch.setattr(M3, "ATLAS_DIR", tmp_path)
     monkeypatch.setattr(M3.Atlas, "_cache", {})
     assert isinstance(A.live_mascot("sao", "happy", 96), A.Mascot)
+
+
+def test_child_app_view_helpers():
+    from datetime import datetime
+    prof = {"nickname": "Bin", "self_pronoun": "con", "guardian_call": "Mẹ"}
+    assert V.greeting(prof, datetime(2026, 11, 20, 9, 0)) == "Chào Bin! Hôm nay là Thứ Sáu, 20/11"
+    assert V.greeting(None, datetime(2026, 11, 22, 9, 0)).startswith("Chào bạn! Hôm nay là Chủ Nhật")
+    # Tầng 1: MỘT thông điệp (còn bao lâu); thanh đo phần ĐÃ dùng trên hạn mức
+    st = {"remaining_sec": 100 * 60, "used_sec": 20 * 60, "quota_min": 120, "phase": "active"}
+    h = V.hero_time(st)
+    assert (h["eyebrow"], h["big"], h["ratio_text"]) == ("CÒN LẠI HÔM NAY", "1 giờ 40 phút", "Đã dùng 20 / 120 phút")
+    assert abs(h["ratio"] - 20 / 120) < 1e-9 and not h["low"] and not h["locked"]
+    # khung giờ hết TRƯỚC hạn mức => nói rõ, để hai con số không "lệch" khó hiểu
+    assert V.hero_time({**st, "remaining_sec": 30 * 60})["eyebrow"] == "CÒN LẠI TRONG KHUNG GIỜ NÀY"
+    assert V.hero_time({**st, "remaining_sec": 9 * 60})["low"]
+    lk = V.hero_time({**st, "phase": "locked", "remaining_sec": 0, "lock_until": "16:30"})
+    assert lk["locked"] and lk["eyebrow"] == "TẠM NGHỈ ĐẾN 16:30" and not lk["low"]
+    assert V.hero_time({"quota_min": 0})["ratio"] == 1.0                      # không chia cho 0
+    # trạng thái yêu cầu: lấy yêu cầu MỚI NHẤT, dùng đúng tên gọi người giám hộ
+    assert V.request_status({}, prof) is None
+    assert V.request_status({"requests": [{"status": "denied"}, {"status": "approved"}]}, prof) == \
+        ("approved", "✓ Mẹ đã đồng ý thêm giờ")
+    assert V.request_status({"requests": [{"status": "pending"}]}, {})[1] == "Đã gửi — Ba Mẹ đang xem…"
+    # Góc Học Tập: không ghi "không giới hạn" trơn (học vẫn tính vào giờ cả ngày)
+    assert V.study_note(16) == "Không giới hạn riêng — Cố lên nhé!" and "Sao Nhỏ" in V.study_note(0)
+    # Góc Giải Trí: có ngân sách => "đã dùng / giới hạn" + thanh; không có => chỉ số phút, không vẽ thanh
+    f = V.fun_card({"budgets": {"games": {"used_min": 12.4, "limit_min": 45}}}, None)
+    assert (f["big"], f["ratio"], f["note"]) == ("12 / 45 phút", 12 / 45, "Còn 33 phút trò chơi hôm nay")
+    full = V.fun_card({"budgets": {"games": {"used_min": 45, "limit_min": 45}}}, None)
+    assert full["ratio"] == 1.0 and full["note"].startswith("Hết giờ trò chơi")
+    nob = V.fun_card({}, {"cats_today": {"games": 3, "entertainment": 4, "education": 50}})
+    assert (nob["big"], nob["ratio"]) == ("7 phút", None)
+    # kim "bây giờ": phút thật từ agent; bản agent cũ chỉ có ô 30 phút => giữa ô
+    assert V.now_minute({"now_min": 14 * 60 + 21}) == 861 and V.now_minute({"now_slot": 4}) == 135
+    assert V.now_minute({"now_min": 5000}) == 1439
+
+
+def test_child_app_explore_and_audit_rows():
+    today = {"top_apps": [{"name": "scratch.exe", "display": "Scratch 3", "minutes": 40},
+                          {"name": "mspaint.exe", "minutes": 0}, {"name": ""}],
+             "top_domains": [{"name": "example.org", "count": 8}, {"name": "school.example", "count": 2}]}
+    r = V.explore_rows(today)
+    assert [a["title"] for a in r["apps"]][0] == "Scratch 3" and len(r["apps"]) == 2   # bỏ dòng thiếu tên
+    assert r["apps"][0]["ratio"] == 1.0 and r["apps"][1]["value"] == "dưới 1 phút"
+    assert [d["value"] for d in r["domains"]] == ["8 lần ghé", "2 lần ghé"] and r["domains"][1]["ratio"] == 0.25
+    assert r["domains"][0]["colors"] == V.avatar_colors("EXAMPLE.ORG")              # màu ổn định theo tên
+    assert V.explore_rows(None) == {"apps": [], "domains": []}
+    prof = {"nickname": "Bin", "guardian_call": "Mẹ"}
+    chat = V.audit_chat([{"when": "hôm nay, 19:50", "lines": ["Mẹ đã đồng ý cho thêm 15 phút",
+                                                               "Con đã xin thêm 15 phút"]},
+                         {"when": "17/11, 08:02", "lines": ["Mẹ đã đổi chặn trang adult-sim-01.test-block.example"]}],
+                        prof)
+    assert chat[0] == {"stamp": "19:50 hôm nay", "text": "Mẹ đã đồng ý tặng thêm 15 phút cho Bin",
+                       "who": "guardian", "kind": "gift", "initial": "M"}
+    assert (chat[1]["who"], chat[1]["kind"], chat[1]["initial"]) == ("child", "ask", "B")
+    assert chat[2]["stamp"] == "08:02 17/11" and chat[2]["kind"] == "edit"
+
+
+def test_child_app_window_and_hud(monkeypatch):
+    import os
+    import pytest
+    pytest.importorskip("PySide6")
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+    from agent.tray import app as A
+    from agent.tray import ui_kit as K
+    _qa = QApplication.instance() or QApplication([])  # noqa: F841
+    monkeypatch.setattr(A, "reduced_motion", lambda: True)       # hoạt ảnh tức thì => kiểm tra đồng bộ
+    w = A.MainWindow(A.Bridge(None, 0, demo=True), lambda: None)
+    assert w.windowFlags() & A.Qt.FramelessWindowHint           # không còn thanh tiêu đề đen của hệ điều hành
+    w._profile = A.DEMO_PROFILE
+    w.update_today(A.demo_status(0))
+    assert w.t_big.text() == "1 giờ 40 phút" and w.t_ratio.text() == "Đã dùng 20 / 120 phút"
+    assert not w.t_req.isHidden() and "Mẹ đã đồng ý" in w.t_req.text()
+    assert w.t_study.text() == "16 phút" and w.t_fun.text() == "0 / 45 phút"
+    assert w.t_badge_icon.sparkle and w.t_medal is not None
+    w.update_today(A.demo_status(0, request=""))
+    assert w.t_req.isHidden()
+    # điều hướng: 4 mục, đúng một mục được chọn; mở tab thì nạp dữ liệu thật của tab
+    for i in range(4):
+        w.go(i)
+        assert w.stack.currentIndex() == i and w.nav_group.checkedId() == i
+    w.go(1)
+    assert w.e_apps.count() == 5 and w.e_doms.count() == 5
+    assert all(isinstance(w.e_apps.itemAt(k).widget(), A.ExploreRow) for k in range(5))
+    w.go(2)
+    assert w.a_list.lay.count() == 4                               # mỗi dòng nhật ký = một bong bóng
+    # mỗi thẻ được đúng MỘT "chủ bóng" vẽ bóng (không vẽ 2 lần, không bỏ sót)
+    cards = w.findChildren(K.Card)
+    assert cards and all(K._host_of(c) is not None for c in cards)
+    # viên HUD: rê chuột => mở rộng và hiện 2 nút; rời chuột => thu lại
+    pill = A.Pill()
+    pill.update_status(A.demo_status(0))
+    assert pill.label.text().endswith("1 giờ 40 phút") and pill.sub.text() == "còn lại"
+    got = []
+    pill.request.connect(lambda: got.append("req"))
+    pill.enterEvent(None)
+    assert pill.expanded() and pill.actions.isVisibleTo(pill)
+    pill.req_btn.click()
+    assert got == ["req"]
+    pill._animate(0.0)
+    assert not pill.expanded() and not pill.actions.isVisibleTo(pill)
+    pill.update_status({**A.demo_status(0, "locked", 0), "lock_until": "16:30"})
+    assert pill.sub.text() == "đến 16:30"

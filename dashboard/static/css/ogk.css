@@ -562,7 +562,6 @@ body.kid { font: 18px/1.6 var(--round); color: var(--text); }
 .k-top { position: sticky; top: 0; z-index: 40; padding: 12px 16px 0; }
 .k-top-in { max-width: 1180px; margin: 0 auto; display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 999px; box-shadow: var(--shadow); }
 .k-logo { display: inline-flex; align-items: center; gap: 10px; margin-right: auto; padding-left: 6px; color: var(--text); text-decoration: none; font: 1000 1.2rem var(--round); }
-.k-logo img { width: 40px; height: 40px; object-fit: contain; }
 .k-nav { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
 .k-nav::-webkit-scrollbar { display: none; }
 .k-nav a { flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border-radius: 999px; color: var(--text); text-decoration: none;
@@ -621,7 +620,11 @@ body.kid { font: 18px/1.6 var(--round); color: var(--text); }
 body.kid .card { border-radius: 30px; padding: 24px; border: 2px solid rgba(255, 255, 255, .9); box-shadow: 0 6px 0 rgba(99, 102, 241, .10), var(--shadow); }
 body.kid .card h2 { display: flex; align-items: center; gap: 12px; font: 1000 1.45rem/1.2 var(--round); }
 body.kid h3 { font: 900 1.1rem var(--round); }
-.k-ic { display: grid; place-items: center; width: 48px; height: 48px; flex: none; border-radius: 16px; background: #fff; box-shadow: 0 4px 0 rgba(30, 27, 75, .06); font-size: 1.5rem; color: var(--indigo); }
+/* nhãn dán vẽ tay (static/stickers, sinh bởi tools/gen_stickers.py): đã có viền trắng + bóng riêng => không cần ô nền */
+.k-ic { width: 52px; height: 52px; flex: none; margin: -6px -2px -6px -6px; }
+.k-nav-st { width: 30px; height: 30px; flex: none; margin: -4px -2px -4px -6px; }
+.k-tag-st { width: 24px; height: 24px; flex: none; margin: -4px 0; }
+.k-h3 { width: 36px; height: 36px; flex: none; margin: -6px 0 -6px -6px; } .k-li { width: 26px; height: 26px; flex: none; margin: -3px 0; }
 .k-big { display: block; font: 1000 3rem/1 var(--round); color: var(--text); letter-spacing: -.02em; }
 .k-big small { font-size: .38em; color: var(--muted); font-weight: 900; letter-spacing: 0; }
 .k-sub { color: var(--muted); font-weight: 800; }
@@ -641,16 +644,12 @@ body.kid h3 { font: 900 1.1rem var(--round); }
 .rbar.mint span { background: linear-gradient(90deg, #6EE7B7, #10B981); } .rbar.sun span { background: linear-gradient(90deg, #FDE68A, #FBBF24); }
 .rbar.grape span { background: linear-gradient(90deg, #C4B5FD, #8B5CF6); }
 .k-badge { display: flex; align-items: center; gap: 16px; }
-.medal { position: relative; display: grid; place-items: center; width: 96px; height: 96px; flex: none; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #FFF7CC, #FBBF24 60%, #D99A0B); box-shadow: 0 6px 0 #C2870A, 0 16px 26px -10px rgba(217, 154, 11, .6); color: #7A4E00; animation: bob 3s ease-in-out infinite; }
-.medal::before, .medal::after { content: ""; position: absolute; top: 80px; width: 26px; height: 40px; z-index: -1; background: #F472B6; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%); }
-.medal::before { left: 18px; transform: rotate(14deg); } .medal::after { right: 18px; background: #8B5CF6; transform: rotate(-14deg); }
-.medal .ic { width: 46px; height: 46px; }
-.medal.off { background: radial-gradient(circle at 35% 30%, #FFFFFF, #E2E8F0 60%, #CBD5E1); box-shadow: 0 6px 0 #B8C2D0; color: #94A3B8; animation: none; }
+.medal { width: 112px; height: 112px; flex: none; animation: bob 3s ease-in-out infinite; }
+.medal.off { opacity: .4; filter: grayscale(1); animation: none; }
 @keyframes bob { 50% { transform: translateY(-4px) rotate(-3deg); } }
 .streak { display: flex; gap: 6px; margin-top: 10px; }
 .streak i { width: 26px; height: 26px; border-radius: 9px; background: rgba(255, 255, 255, .8); display: grid; place-items: center; font-style: normal; font-size: .8rem; }
-.streak i.ok { background: linear-gradient(180deg, #FDE68A, #FBBF24); box-shadow: 0 3px 0 #D99A0B; }
+.streak i.ok { background: none; } .streak i img { width: 30px; height: 30px; }
 
 /* kid: cùng markup báo cáo, "lớp da" vui hơn */
 body.kid .bars { height: 230px; }

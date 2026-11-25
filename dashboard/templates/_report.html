@@ -13,17 +13,17 @@
 <div class="{{ 'k-bento' if kid else 'bento' }}" id="bao-cao">
   <section class="card s8 fill{{ ' tint-sky' if kid }}">
     <div class="card-head">
-      <h2 class="card-title">{% if kid %}<span class="k-ic">📊</span>7 ngày vừa qua{% else %}<span class="tile-ic">{{ icon('chart-column') }}</span>Báo cáo 7 ngày{% endif %}</h2>
+      <h2 class="card-title">{% if kid %}{{ sticker('chart') }}7 ngày vừa qua{% else %}<span class="tile-ic">{{ icon('chart-column') }}</span>Báo cáo 7 ngày{% endif %}</h2>
       {% if not kid %}<a class="btn btn-white btn-sm" href="/children/{{ child.id }}/export.csv">{{ icon('download') }}Xuất CSV</a>{% endif %}
     </div>
     {% if kid %}{{ bars(report.daily, report.max_day) }}
     {% else %}{% call chart('columns', report.daily|map(attribute='date')|list, report.daily|map(attribute='minutes')|list, 'phút', 'indigo', 250, 'Thời lượng 7 ngày, kèm giới hạn cho phép', none, report.daily|map(attribute='quota')|list) %}{{ bars(report.daily, report.max_day) }}{% endcall %}{% endif %}
-    <div class="row" style="margin-top:14px"><span class="tag">{{ icon('clock') }}Tổng 7 ngày: {{ report.week_minutes|mins }}</span>
+    <div class="row" style="margin-top:14px"><span class="tag">{% if kid %}{{ sticker('clock', 'k-tag-st', 24) }}{% else %}{{ icon('clock') }}{% endif %}Tổng 7 ngày: {{ report.week_minutes|mins }}</span>
       {% if not kid %}<span class="tag">{{ icon('shield-check') }}Bị chặn: {{ report.blocked_total }} lần</span>{% endif %}</div>
   </section>
 
   <section class="card s4 fill{{ ' tint-grape' if kid }}">
-    <div class="card-head"><h2 class="card-title">{% if kid %}<span class="k-ic">🧩</span>{{ name }} đã khám phá gì{% else %}<span class="tile-ic grape">{{ icon('layout-grid') }}</span>Phân bổ theo nhóm{% endif %}</h2></div>
+    <div class="card-head"><h2 class="card-title">{% if kid %}{{ sticker('explore') }}{{ name }} đã khám phá gì{% else %}<span class="tile-ic grape">{{ icon('layout-grid') }}</span>Phân bổ theo nhóm{% endif %}</h2></div>
     {% set hb %}{% for c, m in cats.items() %}<div class="hbar"><span class="t">{{ c|cat_vi if kid else c|cat_label }}</span><span class="track"><span class="cat-{{ c }}" style="width:{{ (100 * m / total)|round|int }}%"></span></span><span class="num">{{ m|mins }}</span></div>
     {% else %}<p class="muted">Chưa có dữ liệu.</p>{% endfor %}{% endset %}
     {% if kid %}{{ hb }}
@@ -34,27 +34,27 @@
   </section>
 
   <section class="card s6 fill{{ ' tint-mint' if kid }}">
-    <div class="card-head"><h2 class="card-title">{% if kid %}<span class="k-ic">🎒</span>Ứng dụng {{ name }} dùng nhiều nhất{% else %}<span class="tile-ic grape">{{ icon('app-window') }}</span>Top 10 ứng dụng{% endif %}</h2>{% if not kid %}<span class="h-note">7 ngày</span>{% endif %}</div>
+    <div class="card-head"><h2 class="card-title">{% if kid %}{{ sticker('puzzle') }}Ứng dụng {{ name }} dùng nhiều nhất{% else %}<span class="tile-ic grape">{{ icon('app-window') }}</span>Top 10 ứng dụng{% endif %}</h2>{% if not kid %}<span class="h-note">7 ngày</span>{% endif %}</div>
     {% if kid %}{{ toplist(report.top_apps, 8, 'app') }}
     {% else %}{{ ranklist(report.top_apps, 10, 'app') }}{% endif %}
   </section>
 
   <section class="card s6 fill{{ ' tint-sun' if kid }}">
-    <div class="card-head"><h2 class="card-title">{% if kid %}<span class="k-ic">🌐</span>Trang web {{ name }} hay ghé{% else %}<span class="tile-ic mint">{{ icon('globe') }}</span>Top 10 tên miền{% endif %}</h2>{% if not kid %}<span class="h-note">7 ngày</span>{% endif %}</div>
+    <div class="card-head"><h2 class="card-title">{% if kid %}{{ sticker('globe') }}Trang web {{ name }} hay ghé{% else %}<span class="tile-ic mint">{{ icon('globe') }}</span>Top 10 tên miền{% endif %}</h2>{% if not kid %}<span class="h-note">7 ngày</span>{% endif %}</div>
     {% if kid %}{{ toplist(report.top_domains, 10, 'domain') }}
     {% else %}{{ ranklist(report.top_domains, 10, 'domain') }}{% endif %}
     <p class="small muted" style="margin-top:12px">Chỉ lưu tên miền cấp hai (vd khanacademy.org), không lưu địa chỉ trang hay nội dung.</p>
   </section>
 
   <section class="card s5 fill{{ ' tint-indigo' if kid }}">
-    <div class="card-head"><h2 class="card-title">{% if kid %}<span class="k-ic">📅</span>Theo từng tuần{% else %}<span class="tile-ic blue">{{ icon('calendar-days') }}</span>4 tuần gần đây{% endif %}</h2></div>
+    <div class="card-head"><h2 class="card-title">{% if kid %}{{ sticker('calendar') }}Theo từng tuần{% else %}<span class="tile-ic blue">{{ icon('calendar-days') }}</span>4 tuần gần đây{% endif %}</h2></div>
     {% if kid %}{{ bars(report.weekly, report.max_week, 'start', 'h') }}
     {% else %}{% call chart('columns', report.weekly|map(attribute='start')|list, report.weekly|map(attribute='minutes')|list, 'phút', 'blue', 200, 'Thời lượng 4 tuần') %}{{ bars(report.weekly, report.max_week, 'start', 'h') }}{% endcall %}{% endif %}
   </section>
 
   <section class="card s7{{ ' tint-coral' if kid }}">
     {% if kid %}
-    <div class="card-head"><h2 class="card-title"><span class="k-ic">🛡️</span>Những trang chưa mở cho {{ name }}</h2></div>
+    <div class="card-head"><h2 class="card-title">{{ sticker('shield') }}Những trang chưa mở cho {{ name }}</h2></div>
     <div class="k-pills">{% for b in report.blocked if b.type == 'blocked_domain' %}<span>{{ b.name }}</span>{% else %}<p class="muted">Không có trang nào.</p>{% endfor %}</div>
     <p class="small muted" style="margin-top:12px">Khiên Xanh giữ những trang này lại vì chúng chưa hợp lứa tuổi. Muốn mở trang nào, {{ name }} hỏi ba mẹ nhé!</p>
     {% else %}
@@ -66,7 +66,7 @@
   </section>
 
   <section class="card s12{{ ' tint-indigo' if kid }}">
-    <div class="card-head"><h2 class="card-title">{% if kid %}<span class="k-ic">🙋</span>Các lần {{ name }} xin thêm giờ{% else %}<span class="tile-ic sun">{{ icon('hand') }}</span>Yêu cầu gần đây{% endif %}</h2></div>
+    <div class="card-head"><h2 class="card-title">{% if kid %}{{ sticker('hand') }}Các lần {{ name }} xin thêm giờ{% else %}<span class="tile-ic sun">{{ icon('hand') }}</span>Yêu cầu gần đây{% endif %}</h2></div>
     <ul class="req-list">
       {% for r in report.requests %}
       <li><span><b>{{ r.minutes }} phút</b>{% if r.reason and not kid %} — “{{ r.reason }}”{% endif %} <span class="faint small">{{ r.created_at|when }}</span></span>
